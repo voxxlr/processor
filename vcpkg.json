@@ -1,0 +1,23 @@
+{
+	"name": "voxxlr",
+	"version-string": "8.2.0",
+	"dependencies": ["boost-log", "zlib" ],
+	"features": {
+		"panorama": {
+			"description": "Build 360 images processing",
+			"dependencies": ["libpng", "libjpeg-turbo"]
+		},
+		"map": {
+			"description": "Build Tests",
+			"dependencies": ["libgeotiff"]
+		},
+		"cloud": {
+			"description": "Build Tests",
+			"dependencies": ["glm", "laszip", "xerces-c", "boost-crc", "boost-uuid"]
+		},
+		"model": {
+			"description": "Build Tests",
+			"dependencies": ["glm"]
+		}
+	}
+}

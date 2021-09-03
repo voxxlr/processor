@@ -1,0 +1,44 @@
+#pragma once
+
+#include <boost/thread/mutex.hpp>
+#include <boost/thread.hpp>
+
+#include <vector>
+#include <queue>
+
+#include "../point.h" 
+#include "../kdTree.h"
+#include "../kdFileTree.h"
+
+class PacketProcessor : public KdFileTree::InorderOperation
+{
+	public:
+
+		PacketProcessor();
+
+		uint64_t mTotalStorage;
+		uint64_t mTotalWritten;
+
+		json_spirit::mObject mRootInfo;
+
+	protected:
+
+		float mResolution;
+
+		boost::mutex mCountLock;
+
+
+		// KdTree sorting
+		void kdTest(float* iMin, float* iMax, std::vector<float>& iTree, int iIndex, float* iTestMin, float* iTestMax);
+		void kdTreeSort(PointCloud& iCloud, uint32_t iLower, uint32_t iUpper, std::vector<uint32_t>& iIndex, float* iMin, float* iMax, std::vector<float>& iTree, int iNodeIndex);
+
+		// File I/O
+		void writePacket(json_spirit::mObject& iInfo, PointCloud& iPoints, std::vector<uint32_t>& iIndex);
+
+		// traversal
+		void processInternal(KdFileTreeNode& iNode, PointCloud& iCloud);
+		void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud);
+
+		uint32_t align4(FILE* iFile, uint32_t iPointer);
+  
+};
