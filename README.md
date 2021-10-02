@@ -11,6 +11,8 @@ sh cmake.sh --prefix=/usr/local/ --exclude-subdir
 
 apt-get install build-essential tar zip unzip git 
 apt-get install pkg-config
+apt-get install libpng-dev
+
 
 cd ~
 git clone https://github.com/microsoft/vcpkg
