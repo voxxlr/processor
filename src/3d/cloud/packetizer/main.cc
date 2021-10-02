@@ -40,8 +40,8 @@ bool processFile(json_spirit::mObject& iObject)
 
 int main(int argc, char *argv[])
 {
-	task::initialize("packetizer", "{\"cpus\": 2, \"memory\": 2383217664  }", boost::function<bool(json_spirit::mObject&)>(processFile));
-	//task::initialize("packetizer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
+	//task::initialize("packetizer", "{\"cpus\": 2, \"memory\": 2383217664  }", boost::function<bool(json_spirit::mObject&)>(processFile));
+	task::initialize("packetizer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 
     return EXIT_SUCCESS;
 }
