@@ -17,7 +17,7 @@ git clone https://github.com/microsoft/vcpkg
 ./vcpkg/bootstrap-vcpkg.sh
 
 // clone this repo
-git clone https://jochenstier:###@github.com/voxxlr/test.git processor
+git clone https://jochenstier:###@github.com/voxxlr/processor.git processor
 cd processor
 mkdir build
 cd build
