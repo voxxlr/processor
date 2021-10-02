@@ -23,9 +23,10 @@ bool processFile(json_spirit::mObject& iObject)
 	KdFileTree lFileTree(iObject["memory"].get_int64(), iObject["cpus"].get_int());
 	lFileTree.construct("cloud", 120000, 1.1*KdFileTree::SIGMA);
 	lFileTree.fill(KdFileTree::SIGMA);
+	lFileTree.process(NormalProcessor(), KdFileTree::LEAVES | KdFileTree::INTERNAL);
 
 	PacketProcessor lProcessor;
-	lFileTree.process(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
+	lFileTree.process(PacketProcessor(), KdFileTree::LEAVES | KdFileTree::INTERNAL);
 	lFileTree.remove();
 
 	// write root
@@ -39,8 +40,8 @@ bool processFile(json_spirit::mObject& iObject)
 
 int main(int argc, char *argv[])
 {
-	//task::initialize("packetizer", "{\"cpus\": 8, \"memory\": 16383217664  }", boost::function<bool(json_spirit::mObject&)>(processFile));
-	task::initialize("packetizer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
+	task::initialize("packetizer", "{\"cpus\": 2, \"memory\": 2383217664  }", boost::function<bool(json_spirit::mObject&)>(processFile));
+	//task::initialize("packetizer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 
     return EXIT_SUCCESS;
 }

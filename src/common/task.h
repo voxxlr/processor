@@ -15,6 +15,7 @@
 #include <boost/log/sinks.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
+#include <boost/log/sources/record_ostream.hpp>
 
 #include <boost/log/attributes/attribute.hpp>
 #include <boost/log/attributes/attribute_cast.hpp>
@@ -23,6 +24,7 @@
 
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/setup/console.hpp>
 
 #include <boost/function.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -96,6 +98,10 @@ namespace task
 
 			infos.totalSwap = sys_info.totalswap * sys_info.mem_unit;
 			infos.freeSwap = sys_info.freeswap * sys_info.mem_unit;
+		#endif
+
+		#ifdef WIN32
+		boost::log::add_console_log(std::cout, boost::log::keywords::format = ">> %Message%");
 		#endif
 
 		boost::log::add_file_log

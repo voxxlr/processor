@@ -17,7 +17,7 @@ PointCloudAttributes::PointCloudAttributes()
 }
 
 PointCloudAttributes::PointCloudAttributes(PointCloudAttributes& iAttributes)
-: mByteCount(iAttributes.mByteCount)
+: mByteCount(0)
 {
 	for (size_t i=0; i< iAttributes.mList.size(); i++)
 	{

@@ -40,14 +40,14 @@ config = {
         {
             "files": [
                 { 
-#                    "name": "d:/home/voxxlr/data/cloud/BAUM.e57"
-#                    "name": "d:/home/voxxlr/data/cloud/quarry.las"
-                    "name": "d:/home/voxxlr/data/ifc/Stairs.ifc"
+                    "name": "d:/home/voxxlr/data/cloud/BAUM.e57"
+#                   "name": "d:/home/voxxlr/data/cloud/quarry.las"
+#                   "name": "d:/home/voxxlr/data/ifc/Stairs.ifc"
                 }
             ]
         }
     },
-    "type": 4,
+    "type": 1,
 }
 
 with open("meta.json", "w") as meta:
