@@ -11,13 +11,15 @@ sh cmake.sh --prefix=/usr/local/ --exclude-subdir
 
 apt-get install build-essential tar zip unzip git 
 apt-get install pkg-config
+apt-get install libpng-dev
+
 
 cd ~
 git clone https://github.com/microsoft/vcpkg
 ./vcpkg/bootstrap-vcpkg.sh
 
 // clone this repo
-git clone https://jochenstier:###@github.com/voxxlr/test.git processor
+git clone https://jochenstier:###@github.com/voxxlr/processor.git processor
 cd processor
 mkdir build
 cd build
