@@ -121,7 +121,7 @@ class KdFileTree
 
 				InorderOperation(std::string iName);
 
-				virtual void initTraveral(PointCloudAttributes& iAttributes) {};
+				virtual void initTraveral(PointCloudAttributes& iAttributes);
 				virtual void completeTraveral(PointCloudAttributes& iAttributes) {};
 
 				virtual void processNode(KdFileTreeNode& iNode, PointCloud& iCloud) {};
@@ -143,7 +143,7 @@ class KdFileTree
 
 				PreorderOperation(std::string iName);
 
-				virtual void initTraveral(PointCloudAttributes& iAttributes) {};
+				virtual void initTraveral(PointCloudAttributes& iAttributes);
 				virtual void completeTraveral(PointCloudAttributes& iAttributes) {};
 
 				virtual void processNode(KdFileTreeNode& iNode, PointCloud& iCloud, boost::barrier& iBarrier, uint8_t iThreadCount)  {};
@@ -164,7 +164,7 @@ class KdFileTree
 
 				LeafOperation(std::string iName);
 
-				virtual void initTraveral(PointCloudAttributes& iAttributes) {};
+				virtual void initTraveral(PointCloudAttributes& iAttributes);
 				virtual void completeTraveral(PointCloudAttributes& iAttributes) {};
 
 				virtual void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud) {};

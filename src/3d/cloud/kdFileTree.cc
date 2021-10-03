@@ -880,16 +880,32 @@ KdFileTree::InorderOperation::InorderOperation(std::string iName)
 {
 };
 
+void KdFileTree::InorderOperation::initTraveral(PointCloudAttributes& iAttributes) 
+{
+	BOOST_LOG_TRIVIAL(info) << "Starting Inorder traversal " << mName;
+};
+
+
 KdFileTree::PreorderOperation::PreorderOperation(std::string iName)
 : mName(iName)
 {
 };
+
+void KdFileTree::PreorderOperation::initTraveral(PointCloudAttributes& iAttributes)
+{
+	BOOST_LOG_TRIVIAL(info) << "Starting Preorder traversal " << mName;
+};
+
 
 KdFileTree::LeafOperation::LeafOperation(std::string iName)
 : mName(iName)
 {
 };
 
+void KdFileTree::LeafOperation::initTraveral(PointCloudAttributes& iAttributes)
+{
+	BOOST_LOG_TRIVIAL(info) << "Starting Leaf operation " << mName;
+};
 /*
 #ifdef TIMING
 boost::posix_time::ptime t1 = boost::posix_time::second_clock::local_time();

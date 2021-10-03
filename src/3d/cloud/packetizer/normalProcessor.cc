@@ -19,6 +19,8 @@ NormalProcessor::NormalProcessor()
 
 void NormalProcessor::initTraveral(PointCloudAttributes& iAttributes)
 {
+	InorderOperation::initTraveral(iAttributes);
+
 #if defined PACKED_NORMAL
 	PackedNormalType lAttribute;
 #else
@@ -100,8 +102,6 @@ void NormalProcessor::computeNormals(PointCloud& iPoints, uint32_t iNormalIndex)
 			lPacked.i32f3.y = floor(lNormal[1]*511);
 			lPacked.i32f3.z = floor(lNormal[2]*511);
 			lPacked.i32f3.a = 0;
-
-			#undef CLAMP
 
 		#else
 
