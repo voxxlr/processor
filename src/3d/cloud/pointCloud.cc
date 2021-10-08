@@ -315,7 +315,7 @@ PointCloud::~PointCloud()
 // Attributes
 //
 
-void PointCloud::addAttributes(PointCloud& iPointCloud)
+void PointCloud::addAttributes(PointCloudAttributes& iPointCloud)
 {
 	std::vector<std::tuple<std::string, Attribute*>> lAdded;
 

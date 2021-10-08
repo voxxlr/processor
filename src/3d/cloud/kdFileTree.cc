@@ -100,8 +100,6 @@ KdFileTreeNode::~KdFileTreeNode()
 	{
 		delete mChildHigh;
 	}
-
-	std::remove(std::string(mPath + ".ply").c_str());
 }
 
 bool KdFileTreeNode::grow(std::string iIndent, uint32_t iLeafsize)
@@ -324,6 +322,20 @@ json_spirit::mObject KdFileTreeNode::closeFiles()
 	return lNode;
 }
 
+void KdFileTreeNode::deleteFiles()
+{
+	if (mChildLow)
+	{
+		mChildLow->deleteFiles();
+	}
+	if (mChildHigh)
+	{
+		mChildHigh->deleteFiles();
+	}
+
+	std::remove(std::string(mPath + ".ply").c_str());
+}
+
 bool KdFileTreeNode::prune()
 {
 	bool lLeaf = mState[LEAF];
@@ -332,22 +344,15 @@ bool KdFileTreeNode::prune()
 	{
 		bool lLo = mChildLow->prune();
 		bool lHi = mChildHigh->prune();
-		mState[LEAF] = lLo && lHi;
-		/*
-		bool lLo = mChildLow->pruned();
-		bool lHi = mChildHigh->pruned();
-
 		if (lLo && lHi)
 		{
 			delete mChildLow;
 			mChildLow = 0;
 			delete mChildHigh;
 			mChildHigh = 0;
-
 			mState[LEAF] = true;
 		}
 		return false;
-		*/
 	}
 
 	return lLeaf;
@@ -404,6 +409,7 @@ KdFileTree::KdFileTree(uint64_t iMemory, uint32_t iCPUs)
 	, mRoot(new KdFileTreeNode("n"))
 	, mResolution(0)
 {
+	BOOST_LOG_TRIVIAL(info) << "Creating filetree with " << iMemory/(1024*1024) << "MB of RAM and " << iCPUs << " cores";
 }
 
 void KdFileTree::load(std::string iName)
@@ -500,6 +506,7 @@ uint64_t KdFileTree::collapse(std::string iName)
 
 void KdFileTree::remove()
 {
+	mRoot->deleteFiles();
 	delete mRoot;
 	mRoot = new KdFileTreeNode("n");
 	std::remove("index.json");
@@ -551,6 +558,14 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 		PointCloud::updateSize(lFile, lSampler.mWritten);
 		fclose(lFile);
 	}
+
+	// reload tree
+	delete mRoot;
+	std::ifstream lStream("index.json");
+	json_spirit::mValue lJson;
+	json_spirit::read_stream(lStream, lJson);
+	lStream.close();
+	mRoot = new KdFileTreeNode(lJson.get_obj());
 
 	return lLOD;
 };
@@ -641,8 +656,9 @@ void KdFileTree::inorderVisit(KdFileTree::InorderOperation& iProcessor, KdFileTr
 		{
 			if (iNodes & INTERNAL)
 			{
-				PointCloud lCloud(mPointAttributes);
+				PointCloud lCloud;
 				lCloud.readFile(iNode.mPath);
+				lCloud.addAttributes(mPointAttributes);
 
 				iProcessor.processNode(iNode, lCloud);
 				iProcessor.processInternal(iNode, lCloud);
@@ -664,8 +680,9 @@ void KdFileTree::inorderVisit(KdFileTree::InorderOperation& iProcessor, KdFileTr
 		{
 			if (iNodes & LEAVES)
 			{
-				PointCloud lCloud(mPointAttributes);
+				PointCloud lCloud;
 				lCloud.readFile(iNode.mPath);
+				lCloud.addAttributes(mPointAttributes);
 
 				iProcessor.processNode(iNode, lCloud);
 				iProcessor.processLeaf(iNode, lCloud);
@@ -754,8 +771,10 @@ void KdFileTree::preorderVisit(KdFileTree::PreorderOperation& iProcessor, KdFile
 
 	try
 	{
-		PointCloud lCloud(mPointAttributes);
+		PointCloud lCloud;
 		lCloud.readFile(iNode.mPath);
+		lCloud.addAttributes(mPointAttributes);
+
 		iProcessor.processNode(iNode, lCloud, iBarrier, iThreadCount);
 	}
 	catch (const std::bad_alloc& e) 
@@ -847,8 +866,9 @@ void KdFileTree::leafVisit(KdFileTree::LeafOperation& iProcessor, KdFileTreeNode
 
 	try
 	{
-		PointCloud lCloud(mPointAttributes);
+		PointCloud lCloud;
 		lCloud.readFile(iNode.mPath);
+		lCloud.addAttributes(mPointAttributes);
 
 		iProcessor.processLeaf(iNode, lCloud);
 	}

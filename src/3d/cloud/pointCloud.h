@@ -75,7 +75,7 @@ class PointCloud : public PointCloudAttributes
 		float mMaxExtent[3];
 		float mResolution;
 
-		void addAttributes(PointCloud& iPointCloud);
+		void addAttributes(PointCloudAttributes& iPointCloud);
 
 		Attribute* getAttribute(Point& iPoint, const std::string& iName);
 

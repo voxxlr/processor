@@ -9,14 +9,13 @@ class NormalProcessor : public KdFileTree::InorderOperation
 		NormalProcessor();
 
 		static void computeNormals(PointCloud& iPoints, uint32_t iNormalIndex);
+		void initTraveral(PointCloudAttributes& iAttributes);
 
 	protected:
 
 		uint8_t mInstruction;
 	
-		static bool computePlane(PointCloud& iCloud, std::vector<uint32_t>& iIndex);
 		static void computeCovariance(PointCloud& iCloud, std::vector<std::pair<uint32_t, float>>& iIndex, glm::dmat3& iMatrix);
-		static void computeCentroid(PointCloud& iCloud, std::vector<uint32_t>& iIndex, glm::vec3& iCenter);
 		static bool computeEigen(glm::dmat3& iMatrix, glm::dmat3& iVectors, glm::dvec3& iValues, unsigned maxIterationCount = 50);
 
 		struct EdgeComparator
@@ -64,7 +63,6 @@ class NormalProcessor : public KdFileTree::InorderOperation
 		}
 	
 
-		void initTraveral(PointCloudAttributes& iAttributes);
 
 		void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud);
 		void processInternal(KdFileTreeNode& iNode, PointCloud& iCloud);

@@ -9,7 +9,7 @@
 
 #include "normalProcessor.h"
 
-#define PACKED_NORMAL 1
+//#define PACKED_NORMAL 1
 
 
 NormalProcessor::NormalProcessor()

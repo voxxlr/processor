@@ -27,6 +27,10 @@ class PacketProcessor : public KdFileTree::InorderOperation
 
 		boost::mutex mCountLock;
 
+		// Normal Calculation
+		static void computeNormals(PointCloud& iPoints, uint32_t iNormalIndex);
+		static void computeCovariance(PointCloud& iCloud, std::vector<std::pair<uint32_t, float>>& iIndex, glm::dmat3& iMatrix);
+		static bool computeEigen(glm::dmat3& iMatrix, glm::dmat3& iVectors, glm::dvec3& iValues, unsigned maxIterationCount = 50);
 
 		// KdTree sorting
 		void kdTest(float* iMin, float* iMax, std::vector<float>& iTree, int iIndex, float* iTestMin, float* iTestMax);

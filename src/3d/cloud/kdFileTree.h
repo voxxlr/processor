@@ -47,6 +47,7 @@ class KdFileTreeNode
 		void openFiles(PointCloudAttributes& iAttributes, float iResolution);
 		void write(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, float iOverlap, boost::thread_group*& iGroup, int32_t iThreadCount);
 		json_spirit::mObject closeFiles();
+		void deleteFiles();
 
 		bool prune();
 		uint64_t collapse(FILE* iFile, uint32_t iStride, float* iMin, float* iMax);
