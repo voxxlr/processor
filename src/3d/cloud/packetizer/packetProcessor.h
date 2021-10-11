@@ -21,9 +21,9 @@ class PacketProcessor : public KdFileTree::InorderOperation
 
 		json_spirit::mObject mRootInfo;
 
-	protected:
+		void initTraveral(PointCloudAttributes& iAttributes);
 
-		float mResolution;
+	protected:
 
 		boost::mutex mCountLock;
 

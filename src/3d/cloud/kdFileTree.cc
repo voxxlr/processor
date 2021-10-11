@@ -401,7 +401,8 @@ uint64_t KdFileTreeNode::collapse(FILE* iFile, uint32_t iStride, float* iMin, fl
 
 
 //const float KdFileTree::SIGMA = 1.479;
-const float KdFileTree::SIGMA = 1.25992104989f; // cube root of 3
+//const float KdFileTree::SIGMA = 1.25992104989f*1.06; // cube root of 3 + experimentally deduced factor TODO compute this factor
+const float KdFileTree::SIGMA = 1.41421356237f; // cube root of 3 + experimentally deduced factor TODO compute this factor
 
 KdFileTree::KdFileTree(uint64_t iMemory, uint32_t iCPUs)
 	: mMemory(iMemory)

@@ -19,6 +19,8 @@
 
 #include "../kdFileTree.h"
 
+#define PACKED_NORMAL 1
+
 PacketProcessor::PacketProcessor()
 : InorderOperation("Lod")
 , mTotalStorage(0)
@@ -26,6 +28,18 @@ PacketProcessor::PacketProcessor()
 {
 }
 
+void PacketProcessor::initTraveral(PointCloudAttributes& iAttributes)
+{
+	InorderOperation::initTraveral(iAttributes);
+
+#if defined PACKED_NORMAL
+	PackedNormalType lAttribute;
+#else
+	NormalType lAttribute;
+#endif	
+
+	iAttributes.createAttribute(Attribute::NORMAL, lAttribute);
+}
 
 void PacketProcessor::computeNormals(PointCloud& iPoints, uint32_t iNormalIndex)
 {
@@ -245,6 +259,8 @@ bool PacketProcessor::computeEigen(glm::dmat3& iMatrix, glm::dmat3& iVectors, gl
 
 void PacketProcessor::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
 {
+	computeNormals(iCloud, iCloud.getAttributeIndex(Attribute::NORMAL));
+
 	// filter points in overlap
 	std::vector<uint32_t> lIndex;
 	lIndex.reserve(iCloud.size());
@@ -274,6 +290,8 @@ void PacketProcessor::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
 
 void PacketProcessor::processInternal(KdFileTreeNode& iNode, PointCloud& iCloud)
 {
+	computeNormals(iCloud, iCloud.getAttributeIndex(Attribute::NORMAL));
+
 	// filter points without overlap
 	std::vector<uint32_t> lIndex;
 	lIndex.reserve(iCloud.size());
@@ -351,37 +369,11 @@ void PacketProcessor::kdTest(float* iMin, float* iMax, std::vector<float>& iTree
 		memcpy(lMin, iMin, sizeof(lMin));
 		memcpy(lMax, iMax, sizeof(lMax));
 		lMax[lAxis] = lSplit;
-
-		if (lMax[0] < iTestMin[0] || lMax[0] > iTestMax[0])
-		{
-			std::cout << "fail 1 \n";
-		}
-		if (lMax[1] < iTestMin[1] || lMax[1] > iTestMax[1])
-		{
-			std::cout << "fail 2 \n";
-		}
-		if (lMax[2] < iTestMin[2] || lMax[2] > iTestMax[2])
-		{
-			std::cout << "fail 3 \n";
-		}
 		kdTest(lMin, lMax, iTree, 2*iIndex+1, iTestMin, iTestMax);
 
 		memcpy(lMin, iMin, sizeof(lMin));
 		memcpy(lMax, iMax, sizeof(lMax));
 		lMin[lAxis] = lSplit;
-
-		if (lMin[0] < iTestMin[0] || lMin[0] > iTestMax[0])
-		{
-			std::cout << "fail 1 \n";
-		}
-		if (lMin[1] < iTestMin[1] || lMin[1] > iTestMax[1])
-		{
-			std::cout << "fail 2 \n";
-		}
-		if (lMin[2] < iTestMin[2] || lMin[2] > iTestMax[2])
-		{
-			std::cout << "fail 3 \n";
-		}
 		kdTest(lMin, lMax, iTree, 2*iIndex+2, iTestMin, iTestMax);
 	}
 }
@@ -405,8 +397,6 @@ void PacketProcessor::kdTreeSort(PointCloud& iCloud, uint32_t iLower, uint32_t i
 		Point& lPoint = *iCloud[iIndex[lMiddle]];
 		float lSplit = lPoint.position[lAxis];
 		iTree[iNodeIndex] = lSplit;
-
-		//std::cout << (int)lAxis << "   " << lSplit << "          " << lWx << "    " << lWy << "    " << lWz << "\n";;
 
 		float lMax[3];
 		float lMin[3];

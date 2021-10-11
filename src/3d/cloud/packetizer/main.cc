@@ -24,8 +24,8 @@ bool processFile(json_spirit::mObject& iObject)
 	lFileTree.construct("cloud", 120000, 1.1*KdFileTree::SIGMA);
 	lFileTree.fill(KdFileTree::SIGMA);
 
-	NormalProcessor lProcessor0;
-	lFileTree.process(lProcessor0, KdFileTree::LEAVES | KdFileTree::INTERNAL);
+	//NormalProcessor lProcessor0;
+	//lFileTree.process(lProcessor0, KdFileTree::LEAVES | KdFileTree::INTERNAL);
 
 	PacketProcessor lProcessor1;
 	lFileTree.process(lProcessor1, KdFileTree::LEAVES | KdFileTree::INTERNAL);
