@@ -46,6 +46,8 @@ unsigned long long availableMemory()
 
 #elif defined (LINUX)
 
+#include <sys/sysinfo.h>
+
 unsigned long long availableMemory()
 {
 	struct sysinfo sys_info;
