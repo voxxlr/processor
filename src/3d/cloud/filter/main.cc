@@ -20,8 +20,14 @@
 
 bool processFile(json_spirit::mObject& iObject)
 {
-	KdFileTree lFileTree(iObject["memory"].get_int64(), iObject["cpus"].get_int());
-	lFileTree.construct("cloud", iObject["leafsize"].get_int(), 1.1*KdFileTree::SIGMA);
+	uint64_t lPointCount;
+	FILE* lFile = PointCloud::readHeader("cloud", 0, lPointCount);
+	fclose(lFile);
+
+	uint64_t lThreads = std::thread::hardware_concurrency();
+	// 250 bytes per point includes voxel grid memory, file handles etc. 
+	KdFileTree lFileTree;
+	lFileTree.construct("cloud", std::min((availableMemory() / 250) / lThreads, lPointCount / lThreads), 1.1*KdFileTree::SIGMA);
 
 	VoxelFilter lVoxelFilter(lFileTree.mResolution);
 	lFileTree.process(lVoxelFilter);
@@ -44,7 +50,7 @@ bool processFile(json_spirit::mObject& iObject)
 
 int main(int argc, char *argv[])
 {
-	//task::initialize("filetree", "{\"cpus\": 8, \"memory\": 16383217664, \"leafsize\": 120000 }", boost::function<bool(json_spirit::mObject&)>(processFile));
+	//task::initialize("filetree", "{  }", boost::function<bool(json_spirit::mObject&)>(processFile));
 	task::initialize("filetree", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 	
     return EXIT_SUCCESS;

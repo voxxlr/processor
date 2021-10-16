@@ -19,8 +19,14 @@
 
 bool processFile(json_spirit::mObject& iObject)
 {
-	KdFileTree lFileTree(iObject["memory"].get_int64(), iObject["cpus"].get_int());
-	lFileTree.construct("cloud", iObject["leafsize"].get_int(), 0.00);
+	uint64_t lPointCount; 
+	FILE* lFile = PointCloud::readHeader("cloud", 0, lPointCount);
+	fclose(lFile);
+
+	uint64_t lThreads = std::thread::hardware_concurrency();
+	// 150 bytes per point includes kd tree memory file handles etc. 
+	KdFileTree lFileTree;
+	lFileTree.construct("cloud", std::min((availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
 		
 	Analyzer lAnalyzer;
 	lFileTree.process(lAnalyzer);
@@ -34,7 +40,7 @@ bool processFile(json_spirit::mObject& iObject)
 	lStream.close();
 	*/
 
-	FILE* lFile = PointCloud::updateHeader("cloud");
+	lFile = PointCloud::updateHeader("cloud");
 	PointCloud::updateResolution(lFile, lAnalyzer.mResolution);
 	/*
 	json_spirit::mObject& lMeta = lValue.get_obj();
@@ -53,7 +59,7 @@ bool processFile(json_spirit::mObject& iObject)
 
 int main(int argc, char *argv[])
 {
-	//task::initialize("filetree", "{\"cpus\": 8, \"memory\": 16383217664, \"input\": \"cloud\", \"leafsize\": 120000 }", boost::function<bool(json_spirit::mObject&)>(processFile));
+	//task::initialize("filetree", "{  }", boost::function<bool(json_spirit::mObject&)>(processFile));
 	task::initialize("filetree", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 	
     return EXIT_SUCCESS;

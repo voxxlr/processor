@@ -343,7 +343,7 @@ Attribute* PointCloud::getAttribute(Point& iPoint, const std::string& iName)
 // Reading
 //
 
-FILE* PointCloud::readHeader(std::string& iName, PointCloudAttributes* iAttributes, uint64_t& iSize, float* iMin, float* iMax, float* iResolution)
+FILE* PointCloud::readHeader(std::string iName, PointCloudAttributes* iAttributes, uint64_t& iSize, float* iMin, float* iMax, float* iResolution)
 {
 	std::string lName = iName + ".ply";
 	FILE* lFile = fopen(lName.c_str(), "rb");
@@ -427,8 +427,9 @@ FILE* PointCloud::readHeader(std::string& iName, PointCloudAttributes* iAttribut
 
 void PointCloud::readFile(std::string& iName)
 {
+	boost::posix_time::ptime t1 = boost::posix_time::second_clock::local_time();
+
 	FILE* lFile = readHeader(iName, this, mPointCount, mMinExtent, mMaxExtent, &mResolution);
-	BOOST_LOG_TRIVIAL(info) << "Reading " << iName << " with " <<  mPointCount << " points at " << bytesPerPoint()  << " bytes/point";
 
 	mPoints.reserve(mPointCount);
 	for (uint32_t i=0; i<mPointCount; i++)
@@ -446,6 +447,10 @@ void PointCloud::readFile(std::string& iName)
 	}
 
 	fclose(lFile);
+
+	boost::posix_time::ptime t2 = boost::posix_time::second_clock::local_time();
+	boost::posix_time::time_duration diff = t2 - t1;
+	BOOST_LOG_TRIVIAL(info) << "Read " << iName << " with " << mPointCount << " points at " << bytesPerPoint() << " bytes/point in " << diff.total_milliseconds() / 1000 << " seconds";
 }
 
 

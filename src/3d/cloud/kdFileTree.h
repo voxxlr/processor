@@ -92,7 +92,7 @@ class KdFileTree
 		// 100000 points in a leaf node i.e. one packet going to browser ~ 2MB uncompressed
 		static const float SIGMA;
 
-		KdFileTree(uint64_t iMemory, uint32_t iCPUs);
+		KdFileTree();
 		void construct(std::string iName, uint32_t iLeafsize, float iOverlap);
 		void load(std::string iName);
 
@@ -187,9 +187,6 @@ class KdFileTree
 		void inorderVisit(InorderOperation& iProcessor, KdFileTreeNode& iNode, uint8_t iNodes, bool iThread);
 		void preorderVisit(PreorderOperation& iProcessor, KdFileTreeNode& iNode, boost::barrier& iBarrier, uint8_t iThreadCount);
 		void leafVisit(LeafOperation& iProcessor, KdFileTreeNode& iNode);
-
-		uint64_t mMemory;
-		uint32_t mCPUs;
 }; 
 
 class Downsampler : public KdFileTree::InorderOperation

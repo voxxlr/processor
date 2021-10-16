@@ -74,23 +74,11 @@ if config["type"] == 1: #"cloud"
     
     if not "resolution" in config:
         
-        runVoxxlr("cloud/analyzer", { 
-                  "cpus": psutil.cpu_count(),
-                  "memory": psutil.virtual_memory().free,
-                  "leafsize": 10000000,
-                 })
+        runVoxxlr("cloud/analyzer", { })
 
-    runVoxxlr("cloud/filter", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "density": config["density"] if "density" in config else None,
-                "leafsize": 10000000
-               })
+    runVoxxlr("cloud/filter", {  "density": config["density"] if "density" in config else None })
  
-    runVoxxlr("cloud/packetizer", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free
-                })
+    runVoxxlr("cloud/packetizer", { })
 
 elif config["type"] == 2:#"map"
 

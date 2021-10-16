@@ -40,8 +40,10 @@ config = {
         {
             "files": [
                 { 
-                    "name": "d:/home/voxxlr/data/cloud/BAUM.e57"
-#                   "name": "d:/home/voxxlr/data/cloud/quarry.las"
+#                   "name": "d:/home/voxxlr/data/cloud/BAUM.e57"
+#                   "name": "d:/home/voxxlr/data/cloud/navvis/E57_HQ3rdFloor_SLAM_5mm.e57",
+#                    "name": "d:/home/voxxlr/data/cloud/distro-canyon.las"
+                    "name": "d:/home/voxxlr/data/cloud/GORKA1.las"
 #                   "name": "d:/home/voxxlr/data/ifc/Stairs.ifc"
                 }
             ]
@@ -65,25 +67,11 @@ if config["type"] == 1: #"cloud"
              })
     
     if not "resolution" in config:
-        
-        runVoxxlr("cloud/analyzer", { 
-                  "cpus": psutil.cpu_count(),
-                  "memory": psutil.virtual_memory().free,
-                  "leafsize": 10000000,
-                 })
+        runVoxxlr("cloud/analyzer", { })
    
-    runVoxxlr("cloud/filter", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "leafsize": 10000000,
-                "density": None
-              })
-    
-    runVoxxlr("cloud/packetizer", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free
-                })
-    
+    runVoxxlr("cloud/filter", { "density": None })
+
+    runVoxxlr("cloud/packetizer", { })
 
 elif config["type"] == 2:#"map"
 

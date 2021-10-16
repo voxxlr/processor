@@ -20,15 +20,14 @@ PointBuffer::PointBuffer(FILE* iFile, uint64_t iCount, uint32_t iStride, uint64_
 , mDatastart(ftell(iFile))
 , mCount(iCount)
 , mCurrent(-1)
-, POINTS_PER_IO(std::min(iMemory/iStride, iCount))
-
+, POINTS_PER_IO(std::min(uint64_t(0.9*iMemory)/iStride, iCount))
 {
 	mChunk.mData = new uint8_t[POINTS_PER_IO*iStride];
 }
 
 PointBuffer::~PointBuffer()
 {
-	delete mChunk.mData;
+	delete [] mChunk.mData;
 }
 
 void PointBuffer::begin()

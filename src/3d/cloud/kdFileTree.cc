@@ -28,6 +28,8 @@
 
 #define TIMING 1
 
+extern unsigned long long availableMemory();
+
 KdFileTreeNode::KdFileTreeNode(json_spirit::mObject& iConfig)
 : mChildLow(0)
 , mChildHigh(0)
@@ -391,7 +393,7 @@ uint64_t KdFileTreeNode::collapse(FILE* iFile, uint32_t iStride, float* iMin, fl
 				iMax[2] = std::max<float>(lPosition[2], iMax[2]);
 			}
 
-			fwrite(lChunk.mData, iStride, lCount, iFile);
+			fwrite(lChunk.mData, iStride, lChunk.mSize, iFile);
 		}
 
 		fclose(lFile);
@@ -404,13 +406,12 @@ uint64_t KdFileTreeNode::collapse(FILE* iFile, uint32_t iStride, float* iMin, fl
 //const float KdFileTree::SIGMA = 1.25992104989f*1.06; // cube root of 3 + experimentally deduced factor TODO compute this factor
 const float KdFileTree::SIGMA = 1.41421356237f; // cube root of 3 + experimentally deduced factor TODO compute this factor
 
-KdFileTree::KdFileTree(uint64_t iMemory, uint32_t iCPUs)
-	: mMemory(iMemory)
-	, mCPUs(iCPUs)
-	, mRoot(new KdFileTreeNode("n"))
+//std::thread::hardware_concurrency()
+
+KdFileTree::KdFileTree()
+	: mRoot(new KdFileTreeNode("n"))
 	, mResolution(0)
 {
-	BOOST_LOG_TRIVIAL(info) << "Creating filetree with " << iMemory/(1024*1024) << "MB of RAM and " << iCPUs << " cores";
 }
 
 void KdFileTree::load(std::string iName)
@@ -429,9 +430,14 @@ void KdFileTree::construct(std::string iName, uint32_t iLeafsize, float iOverlap
 {
 	uint64_t lPointCount;
 	FILE* lFile = PointCloud::readHeader(iName, &mPointAttributes, lPointCount, mRoot->min, mRoot->max, &mResolution);
-	
+
+	BOOST_LOG_TRIVIAL(info) << "Constructing filetree for " << lPointCount << " points:";
+	BOOST_LOG_TRIVIAL(info) << "   Memory " << availableMemory() / (1024 * 1024) << "MB";
+	BOOST_LOG_TRIVIAL(info) << "   Threads " << std::thread::hardware_concurrency();
+	BOOST_LOG_TRIVIAL(info) << "   Leafsize " << iLeafsize << " points ";
+
 	// pass one - build tree
-	PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), mMemory);
+	PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());
 	do
 	{
 		lPointBuffer.begin();
@@ -440,7 +446,7 @@ void KdFileTree::construct(std::string iName, uint32_t iLeafsize, float iOverlap
 			PointBuffer::Chunk& lChunk = lPointBuffer.next();
 
 			boost::thread_group* lGroup = new boost::thread_group();
-			mRoot->feed(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, lGroup, 2 * mCPUs);
+			mRoot->feed(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, lGroup, std::thread::hardware_concurrency());
 			lGroup->join_all();
 			delete lGroup;
 		}
@@ -458,7 +464,7 @@ void KdFileTree::construct(std::string iName, uint32_t iLeafsize, float iOverlap
 		PointBuffer::Chunk& lChunk = lPointBuffer.next();
 
 		boost::thread_group* lGroup = new boost::thread_group();
-		mRoot->write(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, iOverlap, lGroup, 2 * mCPUs);
+		mRoot->write(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, iOverlap, lGroup, std::thread::hardware_concurrency());
 		lGroup->join_all();
 		delete lGroup;
 	}
@@ -534,14 +540,14 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 		FILE* lFile = PointCloud::readHeader(lName, NULL, lPointCount);
 		mRoot->openFiles(mPointAttributes, mResolution);
 
-		PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), mMemory);
+		PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());
 		lPointBuffer.begin();
 		while (!lPointBuffer.end())
 		{
 			PointBuffer::Chunk& lChunk = lPointBuffer.next();
 
 			boost::thread_group* lGroup = new boost::thread_group();
-			mRoot->write(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, mResolution, lGroup, 2*mCPUs);
+			mRoot->write(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, mResolution, lGroup, std::thread::hardware_concurrency() );
 			lGroup->join_all();
 			delete lGroup;
 		}
@@ -591,7 +597,7 @@ void KdFileTree::process(KdFileTree::InorderOperation& iProcessor, uint8_t iNode
 {
 	iProcessor.initTraveral(mPointAttributes);
 
-	uint32_t lThreadCount = mCPUs-1;  // select n-1 internal nodes --- 2 threads each will result in mCPUs working threads and mCPU-1 internal threads
+	uint32_t lThreadCount = std::thread::hardware_concurrency() -1;  // select n-1 internal nodes --- 2 threads each will result in mCPUs working threads and mCPU-1 internal threads
 
 	// add internal node threads
 	std::priority_queue<KdFileTreeNode*, std::vector<KdFileTreeNode*>, HighestNode> lQueue;
@@ -742,9 +748,9 @@ void KdFileTree::process(KdFileTree::PreorderOperation& iProcessor)
 	// process levels
 	for (std::vector<std::vector<KdFileTreeNode*>>::iterator lLevel = lLevels.begin(); lLevel != lLevels.end(); lLevel++)
 	{
-		if (lLevel->size() <= mCPUs)
+		if (lLevel->size() <= std::thread::hardware_concurrency())
 		{
-			uint32_t lThreadCount = std::min<uint32_t>(lLevel->size(), mCPUs);
+			uint32_t lThreadCount = std::min<uint32_t>(lLevel->size(), std::thread::hardware_concurrency());
 
 			boost::barrier lBarrier(lThreadCount);
 
@@ -829,7 +835,7 @@ void KdFileTree::process(KdFileTree::LeafOperation& iProcessor)
 	// process levels
 	try
 	{
-		uint32_t lThreadCount = mCPUs;
+		uint32_t lThreadCount = std::thread::hardware_concurrency();
 		boost::thread_group* lGroup = new boost::thread_group();
 		for (std::vector<KdFileTreeNode*>::iterator lLeaf = lLeafs.begin(); lLeaf != lLeafs.end(); lLeaf++)
 		{
@@ -839,7 +845,7 @@ void KdFileTree::process(KdFileTree::LeafOperation& iProcessor)
 				lGroup->join_all();
 				delete lGroup;
 
-				lThreadCount = mCPUs;
+				lThreadCount = std::thread::hardware_concurrency();
 				lGroup = new boost::thread_group();
 			}
 		}

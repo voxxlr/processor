@@ -32,74 +32,36 @@
 
 #include <boost/log/support/date_time.hpp>
 
+#if defined(WIN32)
+
+#include <windows.h>
+
+unsigned long long availableMemory()
+{
+	MEMORYSTATUSEX memory = { sizeof memory };
+	GlobalMemoryStatusEx(&memory);
+	return memory.ullAvailPhys;
+}
+
+
+#elif defined (LINUX)
+
+unsigned long long availableMemory()
+{
+	struct sysinfo sys_info;
+	sysinfo(&sys_info);
+	return sys_info.freeram * sys_info.mem_unit;
+}
+
+#endif
 
 namespace task
 {
 	BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime);
 	BOOST_LOG_ATTRIBUTE_KEYWORD(thread_name, "ThreadName", std::string)
 
-	struct MemoryInfo
-	{
-		std::size_t totalRam{0};
-		std::size_t freeRam{0};
-		std::size_t availableRam{0};
-		std::size_t totalSwap{0};
-		std::size_t freeSwap{0};
-	};
-
-	#if defined(__LINUX__)
-	unsigned long linuxGetAvailableRam()
-	{
-		std::string token;
-		std::ifstream file("/proc/meminfo");
-		while(file >> token) {
-			if(token == "MemAvailable:") {
-				unsigned long mem;
-				if(file >> mem) {
-					// read in kB and convert to bytes
-					return mem * 1024;
-				} else {
-					return 0;
-				}
-			}
-			// ignore rest of the line
-			file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-		}
-		return 0; // nothing found
-	}
-	#endif
-
 	void initialize(std::string iName, char* iConfig, boost::function<bool(json_spirit::mObject&)> iMessageHandler)
 	{
-
-		MemoryInfo infos;
-
-		#if defined(__WINDOWS__)
-			MEMORYSTATUS memory;
-			GlobalMemoryStatus(&memory);
-
-			// memory.dwMemoryLoad;
-			infos.totalRam = memory.dwTotalPhys;
-			infos.availableRam = infos.freeRam = memory.dwAvailPhys;
-			// memory.dwTotalPageFile;
-			// memory.dwAvailPageFile;
-			infos.totalSwap = memory.dwTotalVirtual;
-			infos.freeSwap = memory.dwAvailVirtual;
-		#elif defined(__LINUX__)
-			struct sysinfo sys_info;
-			sysinfo(&sys_info);
-
-			infos.totalRam = sys_info.totalram * sys_info.mem_unit;
-			infos.freeRam = sys_info.freeram * sys_info.mem_unit;
-
-			infos.availableRam = linuxGetAvailableRam();
-			if(infos.availableRam == 0)
-				infos.availableRam = infos.freeRam;
-
-			infos.totalSwap = sys_info.totalswap * sys_info.mem_unit;
-			infos.freeSwap = sys_info.freeswap * sys_info.mem_unit;
-		#endif
-
 		#ifdef WIN32
 		boost::log::add_console_log(std::cout, boost::log::keywords::format = ">> %Message%");
 		#endif
