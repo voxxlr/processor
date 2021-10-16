@@ -57,6 +57,9 @@ unsigned long long availableMemory()
 
 #endif
 
+#include <thread>
+
+
 namespace task
 {
 	BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime);
