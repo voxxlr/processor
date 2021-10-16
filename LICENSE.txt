@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------
-The Voxxlr Processor SDK is licensed under the Affero GPL V3 license.
+The Voxxlr Processing Pipeline is licensed under the Affero GPL V3 license.
 
 Custom licenses are also available for enterprises that wish to avoid the
 copy-left restrictions of the AGPL3 - contact: info@voxxlr.com
