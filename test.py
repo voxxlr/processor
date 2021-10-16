@@ -40,10 +40,10 @@ config = {
         {
             "files": [
                 { 
-#                   "name": "d:/home/voxxlr/data/cloud/BAUM.e57"
+                    "name": "d:/home/voxxlr/data/cloud/BAUM.e57"
 #                   "name": "d:/home/voxxlr/data/cloud/navvis/E57_HQ3rdFloor_SLAM_5mm.e57",
 #                    "name": "d:/home/voxxlr/data/cloud/distro-canyon.las"
-                    "name": "d:/home/voxxlr/data/cloud/GORKA1.las"
+ #                    "name": "d:/home/voxxlr/data/cloud/GORKA1.las"
 #                   "name": "d:/home/voxxlr/data/ifc/Stairs.ifc"
                 }
             ]
