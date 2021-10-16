@@ -26,7 +26,7 @@ bool processFile(json_spirit::mObject& iObject)
 	uint64_t lThreads = std::thread::hardware_concurrency();
 	// 150 bytes per point includes kd tree memory file handles etc. 
 	KdFileTree lFileTree;
-	lFileTree.construct("cloud", std::min((availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
+	lFileTree.construct("cloud", std::min((uint64_t)(availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
 		
 	Analyzer lAnalyzer;
 	lFileTree.process(lAnalyzer);
