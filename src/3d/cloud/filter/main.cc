@@ -27,7 +27,7 @@ bool processFile(json_spirit::mObject& iObject)
 	uint64_t lThreads = std::thread::hardware_concurrency();
 	// 250 bytes per point includes voxel grid memory, file handles etc. 
 	KdFileTree lFileTree;
-	lFileTree.construct("cloud", std::min((availableMemory() / 250) / lThreads, lPointCount / lThreads), 1.1*KdFileTree::SIGMA);
+	lFileTree.construct("cloud", std::min((uint64_t)(availableMemory() / 250) / lThreads, lPointCount / lThreads), 1.1*KdFileTree::SIGMA);
 
 	VoxelFilter lVoxelFilter(lFileTree.mResolution);
 	lFileTree.process(lVoxelFilter);
