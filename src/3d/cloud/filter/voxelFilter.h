@@ -3,7 +3,7 @@
 #include "../kdFileTree.h"
 
 
-class VoxelFilter : public KdFileTree::LeafOperation
+class VoxelFilter : public KdFileTree::InorderOperation
 {
 	public:
 
@@ -13,5 +13,5 @@ class VoxelFilter : public KdFileTree::LeafOperation
 
 		float mResolution;
 
-		void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud);
+		void processNode(KdFileTreeNode& iNode, PointCloud& iCloud);
 };

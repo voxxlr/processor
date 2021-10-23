@@ -94,7 +94,6 @@ namespace task
 		//
 		// read json parameter
 		//
-		std::cout << boost::filesystem::current_path();
 		BOOST_LOG_TRIVIAL(info) << "P  " << boost::filesystem::current_path();
 		BOOST_LOG_TRIVIAL(info) << "C  " << iConfig;
 		json_spirit::mValue lValue;
@@ -102,7 +101,10 @@ namespace task
 		json_spirit::read_stream(lStream, lValue);
 		json_spirit::mObject& lObject = lValue.get_obj();
 		
+		boost::posix_time::ptime t1 = boost::posix_time::second_clock::local_time();
 		iMessageHandler(lObject);
+		boost::posix_time::time_duration diff = boost::posix_time::second_clock::local_time() - t1;
+		BOOST_LOG_TRIVIAL(info) << diff.total_milliseconds() / 1000 << " seconds";
 	}
 };
 

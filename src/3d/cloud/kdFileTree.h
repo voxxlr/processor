@@ -123,70 +123,29 @@ class KdFileTree
 				InorderOperation(std::string iName);
 
 				virtual void initTraveral(PointCloudAttributes& iAttributes);
-				virtual void completeTraveral(PointCloudAttributes& iAttributes) {};
+				virtual void completeTraveral(PointCloudAttributes& iAttributes);
 
 				virtual void processNode(KdFileTreeNode& iNode, PointCloud& iCloud) {};
-				virtual void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud) {};
-				virtual void processInternal(KdFileTreeNode& iNode, PointCloud& iCloud)  {};
 
 				std::string mName;
 
 			private:
+
+				boost::posix_time::ptime mStartTime;
 
 				InorderOperation();
 		};
 
-		void process(InorderOperation& iProcessor, uint8_t iNodes);
-
-		class PreorderOperation
-		{
-			public:
-
-				PreorderOperation(std::string iName);
-
-				virtual void initTraveral(PointCloudAttributes& iAttributes);
-				virtual void completeTraveral(PointCloudAttributes& iAttributes) {};
-
-				virtual void processNode(KdFileTreeNode& iNode, PointCloud& iCloud, boost::barrier& iBarrier, uint8_t iThreadCount)  {};
-
-				std::string mName;
-
-			private:
-
-				PreorderOperation();
-		};
-
-		void process(PreorderOperation& iProcessor);
-
-
-		class LeafOperation
-		{
-			public:
-
-				LeafOperation(std::string iName);
-
-				virtual void initTraveral(PointCloudAttributes& iAttributes);
-				virtual void completeTraveral(PointCloudAttributes& iAttributes) {};
-
-				virtual void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud) {};
-
-				std::string mName;
-
-			private:
-
-				LeafOperation();
-		};
-
-		void process(LeafOperation& iProcessor);
+		void process2(InorderOperation& iProcessor, uint8_t iNodes);
 
 	
 	private:
 
 		KdFileTreeNode* mRoot;
 
-		void inorderVisit(InorderOperation& iProcessor, KdFileTreeNode& iNode, uint8_t iNodes, bool iThread);
-		void preorderVisit(PreorderOperation& iProcessor, KdFileTreeNode& iNode, boost::barrier& iBarrier, uint8_t iThreadCount);
-		void leafVisit(LeafOperation& iProcessor, KdFileTreeNode& iNode);
+		void getNodes(std::vector<KdFileTreeNode*>& iList, KdFileTreeNode& iNode, uint8_t iNodes);
+		void processNode(KdFileTree::InorderOperation& iProcessor, KdFileTreeNode& iNode);
+
 }; 
 
 class Downsampler : public KdFileTree::InorderOperation
@@ -206,7 +165,7 @@ class Downsampler : public KdFileTree::InorderOperation
 		boost::mutex mWriteLock;
 
 		// traversal
-		void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud);
+		void processNode(KdFileTreeNode& iNode, PointCloud& iCloud);
 };
 
 

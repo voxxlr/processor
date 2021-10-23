@@ -20,19 +20,18 @@
 bool processFile(json_spirit::mObject& iObject)
 {
 	KdFileTree lFileTree;
-	lFileTree.construct("cloud", 120000, 7.1*KdFileTree::SIGMA);
+	lFileTree.construct("cloud", 120000, 1.6*KdFileTree::SIGMA);
 	lFileTree.fill(KdFileTree::SIGMA);
 
 	PacketProcessor lProcessor;
-	lFileTree.process(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
+	lFileTree.process2(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
 	lFileTree.remove();
 
 	// write root
-	std::ofstream lRstream("root.json");
-	json_spirit::write_stream(json_spirit::mValue(lProcessor.mRootInfo), lRstream);
-	lRstream.close();
+	std::ofstream lStream("root.json");
+	json_spirit::write_stream(json_spirit::mValue(lProcessor.mRootInfo), lStream);
+	lStream.close();
 
-	BOOST_LOG_TRIVIAL(info) << "DONE";
 	return true;
 };
 

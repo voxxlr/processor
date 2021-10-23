@@ -30,28 +30,27 @@ bool processFile(json_spirit::mObject& iObject)
 	lFileTree.construct("cloud", std::min((uint64_t)(availableMemory() / 250) / lThreads, lPointCount / lThreads), 1.1*KdFileTree::SIGMA);
 
 	VoxelFilter lVoxelFilter(lFileTree.mResolution);
-	lFileTree.process(lVoxelFilter);
+	lFileTree.process2(lVoxelFilter, KdFileTree::LEAVES);
 
 	if (iObject.find("density") != iObject.end())
 	{
 		if (!iObject["density"].is_null())
 		{
 			RadiusFilter lRadiusFilter(lFileTree.mResolution, iObject["density"].get_real());
-			lFileTree.process(lRadiusFilter, KdFileTree::LEAVES);
+			lFileTree.process2(lRadiusFilter, KdFileTree::LEAVES);
 		}
 	}
 
 	lFileTree.collapse("cloud");
 	lFileTree.remove();
 
-	BOOST_LOG_TRIVIAL(info) << "DONE";
 	return true;
 };
 
 int main(int argc, char *argv[])
 {
 	//task::initialize("filetree", "{  }", boost::function<bool(json_spirit::mObject&)>(processFile));
-	task::initialize("filetree", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
+	task::initialize("filter", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 	
     return EXIT_SUCCESS;
 }

@@ -108,7 +108,6 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(lValue, lOstream);
 	lOstream.close();
 
-	BOOST_LOG_TRIVIAL(info) << "DONE";
 	return true;
 };
 

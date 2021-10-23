@@ -37,11 +37,10 @@ class PacketProcessor : public KdFileTree::InorderOperation
 		void kdTreeSort(PointCloud& iCloud, uint32_t iLower, uint32_t iUpper, std::vector<uint32_t>& iIndex, float* iMin, float* iMax, std::vector<float>& iTree, int iNodeIndex);
 
 		// File I/O
-		void writePacket(json_spirit::mObject& iInfo, PointCloud& iPoints, std::vector<uint32_t>& iIndex);
+		void writePacket(KdFileTreeNode& iNode, PointCloud& iPoints);
 
 		// traversal
-		void processInternal(KdFileTreeNode& iNode, PointCloud& iCloud);
-		void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud);
+		void processNode(KdFileTreeNode& iNode, PointCloud& iCloud);
 
 		uint32_t align4(FILE* iFile, uint32_t iPointer);
   

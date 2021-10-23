@@ -2,7 +2,7 @@
 
 #include "../kdFileTree.h"
 
-class Analyzer : public KdFileTree::LeafOperation
+class Analyzer : public KdFileTree::InorderOperation
 {
 	public:
 
@@ -13,7 +13,7 @@ class Analyzer : public KdFileTree::LeafOperation
 
 	protected:
 
-		void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud);
+		void processNode(KdFileTreeNode& iNode, PointCloud& iCloud);
 
 		void completeTraveral(PointCloudAttributes& iAttributes);
 

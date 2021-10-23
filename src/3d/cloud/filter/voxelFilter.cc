@@ -7,12 +7,12 @@
 #include "voxelFilter.h"
 
 VoxelFilter::VoxelFilter(float iResolution)
-: LeafOperation("Voxelfilter")
+: InorderOperation("Voxelfilter")
 , mResolution(iResolution)
 {
 }
 
-void VoxelFilter::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
+void VoxelFilter::processNode(KdFileTreeNode& iNode, PointCloud& iCloud)
 {
 	VoxelHashIndex2 lVoxelHash(iCloud.mPoints, mResolution);
 

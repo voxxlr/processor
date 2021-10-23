@@ -528,11 +528,11 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 	// downsample leaf nodes into file "doc...."
 	std::string lName = "doc-" + std::to_string((boost::int64_t)lDocId++);
 	FILE* lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, mResolution);
-
 	Downsampler lSampler(lFile, mResolution);
-	process(lSampler, LEAVES); 
+	process2(lSampler, LEAVES); 
 	PointCloud::updateSize(lFile, lSampler.mWritten);
 	fclose(lFile);
+	BOOST_LOG_TRIVIAL(info) << "Resolution = " << mResolution << " points " << lSampler.mWritten;
 
 	uint64_t lPointCount;
 	while(!mRoot->prune()) // discard leaf layer
@@ -561,9 +561,10 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 		lName = "doc-"+std::to_string((boost::int64_t)lDocId++);
 		lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, mResolution);
 		Downsampler lSampler(lFile, mResolution);
-		process(lSampler, LEAVES); 
+		process2(lSampler, LEAVES); 
 		PointCloud::updateSize(lFile, lSampler.mWritten);
 		fclose(lFile);
+		BOOST_LOG_TRIVIAL(info) << "Resolution = " << mResolution << " points " << lSampler.mWritten;
 	}
 
 	// reload tree
@@ -579,328 +580,70 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 
 
 //
-// Processor
-//
-
-struct HighestNode
-{
-	bool operator()(const KdFileTreeNode* iL, const KdFileTreeNode* iR) const
-	{
-		return iL->mHeight > iR->mHeight;
-	}
-};
-
-//
 // inorder traverasl
 //
-void KdFileTree::process(KdFileTree::InorderOperation& iProcessor, uint8_t iNodes)
+
+
+void KdFileTree::getNodes(std::vector<KdFileTreeNode*>& iList, KdFileTreeNode& iNode, uint8_t iNodes)
 {
-	iProcessor.initTraveral(mPointAttributes);
-
-	uint32_t lThreadCount = std::thread::hardware_concurrency() -1;  // select n-1 internal nodes --- 2 threads each will result in mCPUs working threads and mCPU-1 internal threads
-
-	// add internal node threads
-	std::priority_queue<KdFileTreeNode*, std::vector<KdFileTreeNode*>, HighestNode> lQueue;
-	lQueue.push(mRoot);
-	while (!lQueue.empty())
-	{
-		KdFileTreeNode* lNode = lQueue.top();
-		lQueue.pop();
-	
-		if (lThreadCount-- <= 0)
-		{
-			break;
-		}
-		lNode->mThreaded = true;
-		
-		if (lNode->mChildLow)
-		{
-			lQueue.push(lNode->mChildLow);
-		}
-
-		if (lNode->mChildHigh)
-		{
-			lQueue.push(lNode->mChildHigh);
-		}
-	}
-
-	inorderVisit(iProcessor, *mRoot, iNodes, mRoot->mThreaded);
-
-	iProcessor.completeTraveral(mPointAttributes);
-}
-
-void KdFileTree::inorderVisit(KdFileTree::InorderOperation& iProcessor, KdFileTreeNode& iNode, uint8_t iNodes, bool iThread)
-{
-	if (iThread)
-	{
-		std::string lPath = iNode.mPath;
-		size_t lLength = lPath.length();
-		if (lLength < 10)
-		{
-			lPath.insert(0, 10 - lLength, ' ');
-		}
-		boost::log::core::get()->add_thread_attribute("ThreadName", boost::log::attributes::constant< std::string >(lPath));
-	}
-
 	if (iNode.mChildLow && iNode.mChildHigh)
 	{
-		if (iNode.mThreaded)
+		if (iNodes & INTERNAL)
 		{
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(100)); // make sure the threads are balanced
-			boost::thread lT1(&KdFileTree::inorderVisit, this, boost::ref(iProcessor), boost::ref(*iNode.mChildLow), iNodes, true);
-			boost::thread lT2(&KdFileTree::inorderVisit, this, boost::ref(iProcessor), boost::ref(*iNode.mChildHigh), iNodes, true);
-			lT1.join();
-			lT2.join();
-			iNode.mThreaded = false;
-		}
-		else
-		{
-			inorderVisit(iProcessor, *iNode.mChildLow, iNodes, false);
-			inorderVisit(iProcessor, *iNode.mChildHigh, iNodes, false); 
+			iList.push_back(&iNode);
 		}
 
-		try
-		{
-			if (iNodes & INTERNAL)
-			{
-				PointCloud lCloud;
-				lCloud.readFile(iNode.mPath);
-				lCloud.addAttributes(mPointAttributes);
-
-				iProcessor.processNode(iNode, lCloud);
-				iProcessor.processInternal(iNode, lCloud);
-			}
-		}
-		catch (const std::bad_alloc& e) 
-		{
-			BOOST_LOG_TRIVIAL(info) << "Allocation failed: " << e.what();
-			exit(-1);
-		}
-		catch (...)
-		{
-			BOOST_LOG_TRIVIAL(info) << "Caught Exception in processInternal";
-		}
+		getNodes(iList, *iNode.mChildLow, iNodes);
+		getNodes(iList, *iNode.mChildHigh, iNodes);
 	}
 	else
 	{
-		try
+		if (iNodes & LEAVES)
 		{
-			if (iNodes & LEAVES)
-			{
-				PointCloud lCloud;
-				lCloud.readFile(iNode.mPath);
-				lCloud.addAttributes(mPointAttributes);
-
-				iProcessor.processNode(iNode, lCloud);
-				iProcessor.processLeaf(iNode, lCloud);
-			}
-		}
-		catch (const std::bad_alloc& e) 
-		{
-			BOOST_LOG_TRIVIAL(info) << "Allocation failed: " << e.what() << "   "  << iNode.mPath;
-			exit(-1);
-		}
-		catch (...)
-		{
-			BOOST_LOG_TRIVIAL(info) << "Undefined Exception"  << iNode.mPath;
-			exit(-1);
+			iList.push_back(&iNode);
 		}
 	}
 }
 
-
-//
-// preorder traverasl
-//
-
-void KdFileTree::process(KdFileTree::PreorderOperation& iProcessor)
+void KdFileTree::processNode(KdFileTree::InorderOperation& iProcessor, KdFileTreeNode& iNode)
 {
+	PointCloud lCloud;
+	lCloud.readFile(iNode.mPath);
+	lCloud.addAttributes(mPointAttributes);
+
+	iProcessor.processNode(iNode, lCloud);
+}
+
+
+void KdFileTree::process2(KdFileTree::InorderOperation& iProcessor, uint8_t iNodes)
+{
+	std::vector<KdFileTreeNode*> lVector;
+	getNodes(lVector, *mRoot, iNodes);
+
 	iProcessor.initTraveral(mPointAttributes);
 
-	std::vector<std::vector<KdFileTreeNode*>> lLevels;
-
-	// separate into levels
-	std::queue<KdFileTreeNode*> lQueue;
-	lQueue.push(mRoot);
-	while (!lQueue.empty())
+	boost::thread_group* lGroup = new boost::thread_group();
+	for (std::vector<KdFileTreeNode*>::iterator lIter = lVector.begin(); lIter != lVector.end(); lIter++)
 	{
-		KdFileTreeNode* lNode = lQueue.front();
-		lQueue.pop();
-
-		if (lNode->mHeight == lLevels.size())
+		if (lGroup->size() == std::thread::hardware_concurrency())
 		{
-			lLevels.push_back(std::vector<KdFileTreeNode*>());
-		}
-
-		lLevels[lNode->mHeight].push_back(lNode);
-
-		if (lNode->mChildLow)
-		{
-			lQueue.push(lNode->mChildLow);
-		}
-
-		if (lNode->mChildHigh)
-		{
-			lQueue.push(lNode->mChildHigh);
-		}
-	}
-
-	// process levels
-	for (std::vector<std::vector<KdFileTreeNode*>>::iterator lLevel = lLevels.begin(); lLevel != lLevels.end(); lLevel++)
-	{
-		if (lLevel->size() <= std::thread::hardware_concurrency())
-		{
-			uint32_t lThreadCount = std::min<uint32_t>(lLevel->size(), std::thread::hardware_concurrency());
-
-			boost::barrier lBarrier(lThreadCount);
-
-			boost::thread_group* lGroup = new boost::thread_group();
-			for (std::vector<KdFileTreeNode*>::iterator lNode = lLevel->begin(); lNode != lLevel->end(); lNode++)
-			{
-				lGroup->add_thread(new boost::thread(&KdFileTree::preorderVisit, this, boost::ref(iProcessor), boost::ref(*(*lNode)), boost::ref(lBarrier), lThreadCount));
-			}
 			lGroup->join_all();
+			delete lGroup;
+			lGroup = new boost::thread_group();
 		}
+		lGroup->add_thread(new boost::thread(&KdFileTree::processNode, this, boost::ref(iProcessor), boost::ref(*(*lIter))));
 	}
+
+	if (lGroup->size())
+	{
+		lGroup->join_all();
+	}
+	delete lGroup;
 
 	iProcessor.completeTraveral(mPointAttributes);
 }
 
-void KdFileTree::preorderVisit(KdFileTree::PreorderOperation& iProcessor, KdFileTreeNode& iNode, boost::barrier& iBarrier, uint8_t iThreadCount)
-{
-	std::string lPath = iNode.mPath;
-	size_t lLength = lPath.length();
-	if (lLength < 10)
-	{
-		lPath.insert(0, 10 - lLength, ' ');
-	}
-	boost::log::core::get()->add_thread_attribute("ThreadName", boost::log::attributes::constant< std::string >(lPath));
 
-	try
-	{
-		PointCloud lCloud;
-		lCloud.readFile(iNode.mPath);
-		lCloud.addAttributes(mPointAttributes);
-
-		iProcessor.processNode(iNode, lCloud, iBarrier, iThreadCount);
-	}
-	catch (const std::bad_alloc& e) 
-	{
-		BOOST_LOG_TRIVIAL(info) << "Allocation failed: " << e.what() << "   "  << iNode.mPath;
-		exit(-1);
-	}
-	catch (...)
-	{
-		BOOST_LOG_TRIVIAL(info) << "Undefined Exception"  << iNode.mPath;
-		exit(-1);
-	}
-
-}
-
-
-//
-// leaf traverasl
-//
-
-void KdFileTree::process(KdFileTree::LeafOperation& iProcessor)
-{
-	iProcessor.initTraveral(mPointAttributes);
-
-	std::vector<KdFileTreeNode*> lLeafs;
-
-	// separate into levels
-	std::queue<KdFileTreeNode*> lQueue;
-	lQueue.push(mRoot);
-	while (!lQueue.empty())
-	{
-		KdFileTreeNode* lNode = lQueue.front();
-		lQueue.pop();
-
-		if (lNode->mChildLow)
-		{
-			lQueue.push(lNode->mChildLow);
-		}
-
-		if (lNode->mChildHigh)
-		{
-			lQueue.push(lNode->mChildHigh);
-		}
-
-		if (!(lNode->mChildHigh && lNode->mChildHigh))
-		{
-			lLeafs.push_back(lNode);
-		}
-	}
-
-	// process levels
-	try
-	{
-		uint32_t lThreadCount = std::thread::hardware_concurrency();
-		boost::thread_group* lGroup = new boost::thread_group();
-		for (std::vector<KdFileTreeNode*>::iterator lLeaf = lLeafs.begin(); lLeaf != lLeafs.end(); lLeaf++)
-		{
-			lGroup->add_thread(new boost::thread(&KdFileTree::leafVisit, this, boost::ref(iProcessor), boost::ref(*(*lLeaf))));
-			if (lThreadCount-- == 0)
-			{
-				lGroup->join_all();
-				delete lGroup;
-
-				lThreadCount = std::thread::hardware_concurrency();
-				lGroup = new boost::thread_group();
-			}
-		}
-		lGroup->join_all();
-
-		iProcessor.completeTraveral(mPointAttributes);
-	}
-	catch (...)
-	{
-		BOOST_LOG_TRIVIAL(info) << "Undefined Exception in KdFileTree::process(KdFileTree::LeafOperation& iProcessor)";
-		exit(-1);
-	}
-
-}
-
-void KdFileTree::leafVisit(KdFileTree::LeafOperation& iProcessor, KdFileTreeNode& iNode)
-{
-	std::string lPath = iNode.mPath;
-	size_t lLength = lPath.length();
-	if (lLength < 10)
-	{
-		lPath.insert(0, 10 - lLength, ' ');
-	}
-	boost::log::core::get()->add_thread_attribute("ThreadName", boost::log::attributes::constant< std::string >(lPath));
-
-	try
-	{
-		PointCloud lCloud;
-		lCloud.readFile(iNode.mPath);
-		lCloud.addAttributes(mPointAttributes);
-
-		iProcessor.processLeaf(iNode, lCloud);
-	}
-	catch (const std::bad_alloc& e)
-	{
-		BOOST_LOG_TRIVIAL(info) << "Allocation failed: " << e.what() << "   " << iNode.mPath;
-		exit(-1);
-	}
-	catch (...)
-	{
-		BOOST_LOG_TRIVIAL(info) << "Undefined Exception" << iNode.mPath;
-		exit(-1);
-	}
-}
-
-
-//
-//
-//
-/*
-uint32_t KdFileTree::bytesPerPoint()
-{
-	return mSourceCloud.bytesPerPoint();
-}
-*/
 
 KdFileTree::InorderOperation::InorderOperation(std::string iName)
 : mName(iName)
@@ -909,42 +652,15 @@ KdFileTree::InorderOperation::InorderOperation(std::string iName)
 
 void KdFileTree::InorderOperation::initTraveral(PointCloudAttributes& iAttributes) 
 {
-	BOOST_LOG_TRIVIAL(info) << "Starting Inorder traversal " << mName;
+	mStartTime = boost::posix_time::second_clock::local_time();
+	BOOST_LOG_TRIVIAL(info) << "Starting : " << mName;
 };
 
-
-KdFileTree::PreorderOperation::PreorderOperation(std::string iName)
-: mName(iName)
+void KdFileTree::InorderOperation::completeTraveral(PointCloudAttributes& iAttributes)
 {
+	boost::posix_time::time_duration diff = boost::posix_time::second_clock::local_time() - mStartTime;
+	BOOST_LOG_TRIVIAL(info) << "Finished : " << mName << ":" << diff.total_milliseconds() / 1000 << " seconds";
 };
-
-void KdFileTree::PreorderOperation::initTraveral(PointCloudAttributes& iAttributes)
-{
-	BOOST_LOG_TRIVIAL(info) << "Starting Preorder traversal " << mName;
-};
-
-
-KdFileTree::LeafOperation::LeafOperation(std::string iName)
-: mName(iName)
-{
-};
-
-void KdFileTree::LeafOperation::initTraveral(PointCloudAttributes& iAttributes)
-{
-	BOOST_LOG_TRIVIAL(info) << "Starting Leaf operation " << mName;
-};
-/*
-#ifdef TIMING
-boost::posix_time::ptime t1 = boost::posix_time::second_clock::local_time();
-#endif
-
-#ifdef TIMING
-boost::posix_time::ptime t2 = boost::posix_time::second_clock::local_time();
-boost::posix_time::time_duration diff = t2 - t1;
-//	BOOST_LOG_TRIVIAL(info) << "Recording " << iCount/(1000000.0) << " million points took " << diff.total_milliseconds()/1000 << " seconds";
-#endif
-*/
-
 
 //
 // Fill internal nodes
@@ -959,7 +675,7 @@ Downsampler::Downsampler(FILE* iFile, float iResolution)
 }
 
 
-void Downsampler::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
+void Downsampler::processNode(KdFileTreeNode& iNode, PointCloud& iCloud)
 {
 	VoxelHashIndex2 lVoxelHash(iCloud.mPoints, mResolution);
 
@@ -1043,46 +759,5 @@ void Downsampler::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
 	}
 
 	mWriteLock.unlock();
-
-	/*
-	VoxelHashIndex lVoxelHash(iCloud.mPoints, mResolution);
-
-	// pass 1 count
-	for (uint32_t i=0; i<iCloud.size(); i++)
-	{
-		bool lNew;
-		Point& lPoint = lVoxelHash.getPoint(*iCloud[i], i, lNew);
-
-		if (lNew)
-		{
-			lPoint.mWeight = 1;
-		}
-		else
-		{
-			lPoint.position[0] = (lPoint.position[0]*lPoint.mWeight + iCloud[i]->position[0])/(lPoint.mWeight+1);
-			lPoint.position[1] = (lPoint.position[1]*lPoint.mWeight + iCloud[i]->position[1])/(lPoint.mWeight+1);
-			lPoint.position[2] = (lPoint.position[2]*lPoint.mWeight + iCloud[i]->position[2])/(lPoint.mWeight+1);
-
-			iCloud.average(lPoint,*iCloud[i]);
-			lPoint.mWeight = lPoint.mWeight+1.0;
-		}
-	}
-
-	mWriteLock.lock();
-	std::vector<int32_t>& lGrid = lVoxelHash.getGrid();
-	for (std::vector<int32_t>::iterator lIter = lGrid.begin(); lIter != lGrid.end(); lIter++)
-	{
-		if (*lIter >= 0)
-		{
-			Point& lPoint = *iCloud[*lIter];
-			if (lPoint.inside(iNode.min, iNode.max))
-			{
-				iCloud[*lIter]->write(mFile);
-				mWritten++;
-			}
-		}
-	}
-	mWriteLock.unlock();
-	*/
 
 }

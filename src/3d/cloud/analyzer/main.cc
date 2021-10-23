@@ -29,7 +29,7 @@ bool processFile(json_spirit::mObject& iObject)
 	lFileTree.construct("cloud", std::min((uint64_t)(availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
 		
 	Analyzer lAnalyzer;
-	lFileTree.process(lAnalyzer);
+	lFileTree.process2(lAnalyzer, KdFileTree::LEAVES);
 	lFileTree.remove();
 
 	// read meta
@@ -52,15 +52,13 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(lValue, lOstream);
 	lOstream.close();
 	*/
-
-	BOOST_LOG_TRIVIAL(info) << "DONE";
 	return true;
 };
 
 int main(int argc, char *argv[])
 {
 	//task::initialize("filetree", "{  }", boost::function<bool(json_spirit::mObject&)>(processFile));
-	task::initialize("filetree", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
+	task::initialize("analyzer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 	
     return EXIT_SUCCESS;
 }

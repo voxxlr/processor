@@ -37,13 +37,13 @@ private:
 };
 
 Analyzer::Analyzer()
-: LeafOperation("Analyzer")
+: InorderOperation("Analyzer")
 , mResolution(0)
 , mVariance(0)
 {
 }
 
-void Analyzer::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
+void Analyzer::processNode(KdFileTreeNode& iNode, PointCloud& iCloud)
 {
 #ifdef TIMING
 	boost::posix_time::ptime t1 = boost::posix_time::second_clock::local_time();
@@ -129,6 +129,8 @@ void Analyzer::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
 
 void Analyzer::completeTraveral(PointCloudAttributes& iAttributes)
 {
+	InorderOperation::completeTraveral(iAttributes);
+
 	uint64_t lCount = 0;
 	for (std::vector<std::tuple<double, double, uint32_t>>::iterator lIter = mNodes.begin(); lIter != mNodes.end(); lIter++)
 	{
