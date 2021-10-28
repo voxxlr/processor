@@ -25,6 +25,7 @@ logF.write("################\n")
 root = os.path.dirname(os.path.abspath(__file__))
 logF.write(root+"\n")
 
+''''
 def runVoxxlr(name,args):
     name = f"{root}/bin/{name}.exe"
     logF.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
@@ -32,6 +33,25 @@ def runVoxxlr(name,args):
     process = subprocess.Popen([name,json.dumps(args)], stdout=logF, stderr=logF, shell=True)
     stdout, stderr = process.communicate()
     process.wait()
+'''
+
+def runVoxxlr(name,args):
+   if os.name == "posix":
+        name = f"sudo {root}/bin/{name}"
+        logF.write(name+" \""+json.dumps(args).replace('"','\\"')+"\"\n")
+        #logF.write(json.dumps(args,sort_keys=True,indent=4)+"\n")
+        #process = subprocess.Popen([name,json.dumps(args)], stdout=logF, stderr=logF, shell=True)
+        process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=logF, stderr=logF, shell=True,cwd=".")
+        stdout, stderr = process.communicate()
+        process.wait()
+   else:
+        name = f"{root}/bin/{name}.exe"
+        logF.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
+        #logF.write(json.dumps(args,sort_keys=True,indent=4)+"\n")
+        process = subprocess.Popen([name,json.dumps(args)], stdout=logF, stderr=logF, shell=True)
+        stdout, stderr = process.communicate()
+        process.wait()
+
 
 config = {
     "meta": 

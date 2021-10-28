@@ -49,8 +49,8 @@ int main(int argc, char *argv[])
 	lProcessor0.computeNormals(lCloud, lCloud.getAttributeIndex(Attribute::NORMAL));
 	lCloud.writeFile(std::string("n0000_N"));
 	*/
-	task::initialize("packetizer", "{ }", boost::function<bool(json_spirit::mObject&)>(processFile));
-	//task::initialize("packetizer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
+	//task::initialize("packetizer", "{ }", boost::function<bool(json_spirit::mObject&)>(processFile));
+	task::initialize("packetizer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 
     return EXIT_SUCCESS;
 }
