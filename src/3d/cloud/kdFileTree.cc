@@ -35,9 +35,9 @@ KdFileTreeNode::KdFileTreeNode(json_spirit::mObject& iConfig)
 , mChildHigh(0)
 , mCount(0)
 , mFile(0)
-, mState(3)
 , mThreaded(false)
 , mPath(iConfig["path"].get_str())
+, mVolumeLimit(0) 
 {
 	min[0] = iConfig["minx"].get_real();
 	min[1] = iConfig["miny"].get_real();
@@ -52,13 +52,11 @@ KdFileTreeNode::KdFileTreeNode(json_spirit::mObject& iConfig)
 		mChildLow = new KdFileTreeNode(iConfig["low"].get_obj());
 		mChildHigh = new KdFileTreeNode(iConfig["high"].get_obj());
 		mHeight = std::max(mChildLow->mHeight, mChildHigh->mHeight) + 1;
-		mState[LEAF] = false;
 		mSplit = iConfig["split"].get_real();
 		mAxis = iConfig["axis"].get_int();
 	}
 	else
 	{
-		mState[LEAF] = true;
 		mHeight = 0;
 	}
 }
@@ -70,10 +68,11 @@ KdFileTreeNode::KdFileTreeNode(std::string iPath, uint32_t iHeight)
 , mChildHigh(0)
 , mCount(0)
 , mFile(0)
-, mState(3)
 , mThreaded(false)
 , mHeight(iHeight)
 , mPath(iPath)
+, mVolumeLimit(0)
+, mAlive(true)
 {
 	min[0] = std::numeric_limits<float>::max();
 	min[1] = std::numeric_limits<float>::max();
@@ -86,10 +85,6 @@ KdFileTreeNode::KdFileTreeNode(std::string iPath, uint32_t iHeight)
 	median[0] = 0;
 	median[1] = 0;
 	median[2] = 0;
-
-	mState[LEAF] = true;
-	mState[ALIVE] = true;
-	mState[DEGENERATE] = false;
 }
 
 KdFileTreeNode::~KdFileTreeNode()
@@ -104,43 +99,79 @@ KdFileTreeNode::~KdFileTreeNode()
 	}
 }
 
+#define PLANK_LENGTH  0.0005
+
 bool KdFileTreeNode::grow(std::string iIndent, uint32_t iLeafsize)
 {
-	BOOST_LOG_TRIVIAL(info) << iIndent << mPath;
+	//BOOST_LOG_TRIVIAL(info) << iIndent << mPath;
 
-	mState[ALIVE] = false;
-	if (!mState[LEAF])
+	mAlive = false;
+	if (mChildLow && mChildHigh)
 	{
-		if (mChildLow->mState[ALIVE])
+		if (mChildLow->mAlive)
 		{
 			if (mChildLow->grow(iIndent+"  ", iLeafsize))
 			{
-				mState[ALIVE] = true;
+				mAlive = true;
 			}
 		}
 
-		if (mChildHigh->mState[ALIVE])
+		if (mChildHigh->mAlive)
 		{
 			if (mChildHigh->grow(iIndent+"  ", iLeafsize))
 			{
-				mState[ALIVE] = true;
+				mAlive = true;
 			}
-		}
-
-		if (mChildHigh->mState[DEGENERATE])
-		{
-			mChildLow->mState[DEGENERATE] = true;
-			mChildLow->mState[ALIVE] = false;
-		}
-
-		if (mChildLow->mState[DEGENERATE])
-		{
-			mChildHigh->mState[DEGENERATE] = true;
-			mChildHigh->mState[ALIVE] = false;
 		}
 	}
 	else
 	{
+		if (mCount > iLeafsize)
+		{
+			float lMaxD = std::max(std::max(max[2] - min[2], max[1] - min[1]), max[0] - min[0]) / PLANK_LENGTH; // convert to Voxxlr's Plank length 
+			if (mCount < lMaxD * lMaxD * lMaxD)
+			{
+				// find split axis
+				float lT = 0;
+				for (int i = 0; i < 3; i++)
+				{
+					float dToBox = std::min(max[i] - median[i], median[i] - min[i]);
+					if (dToBox > lT)
+					{
+						lT = dToBox;
+						mAxis = i;
+					}
+				}
+
+				mSplit = median[mAxis];
+
+				mChildLow = new KdFileTreeNode(mPath + "0", mHeight + 1);
+				memcpy(mChildLow->min, min, sizeof(min));
+				memcpy(mChildLow->max, max, sizeof(max));
+				mChildLow->max[mAxis] = mSplit;
+
+				mChildHigh = new KdFileTreeNode(mPath + "1", mHeight + 1);
+				memcpy(mChildHigh->min, min, sizeof(min));
+				memcpy(mChildHigh->max, max, sizeof(max));
+				mChildHigh->min[mAxis] = mSplit;
+
+				BOOST_LOG_TRIVIAL(info) << iIndent << mPath << ": points = " << mCount << " split " << (int)mAxis << ":" << mSplit;
+				mAlive = true;
+			}
+			else
+			{
+				float lVolume = (max[2] - min[2]) * (max[1] - min[1]) * (max[0] - min[0]);
+				mVolumeLimit = std::max(1.0, lVolume / (PLANK_LENGTH * PLANK_LENGTH * PLANK_LENGTH));
+				BOOST_LOG_TRIVIAL(info) << iIndent << "degenerate " << mCount << " points in " << lVolume << " m2. Limiting volume to " << mVolumeLimit;
+				mAlive = false;
+			}
+		}
+		else
+		{
+			mAlive = false;
+		}
+
+		/*
 		if (mCount > iLeafsize)
 		{
 			float lVolume = (max[2] - min[2])*(max[1] - min[1])*(max[0] - min[0]);
@@ -171,7 +202,7 @@ bool KdFileTreeNode::grow(std::string iIndent, uint32_t iLeafsize)
 				mChildHigh->min[mAxis] = mSplit;
 
 				mState[LEAF] = false;
-				mState[ALIVE] = true;
+				mAlive = true;
 				BOOST_LOG_TRIVIAL(info) << iIndent << "Split -----  " << mSplit;
 			//}	
 			//else
@@ -180,27 +211,28 @@ bool KdFileTreeNode::grow(std::string iIndent, uint32_t iLeafsize)
 			//	mState[DEGENERATE] = true;
 			//}
 		}
+		*/
 	}
-	return mState[ALIVE];
+	return mAlive;
 }
 
 void KdFileTreeNode::feed(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, boost::thread_group*& iGroup, int32_t iThreadCount)
 {
-	if (!mState[LEAF])
+	if (mChildLow && mChildHigh)
 	{
-		if (mChildLow->mState[ALIVE])
+		if (mChildLow->mAlive)
 		{
 			mChildLow->feed(iBuffer, iStride, iCount, iGroup, iThreadCount);
 		}
 
-		if (mChildHigh->mState[ALIVE])
+		if (mChildHigh->mAlive)
 		{
 			mChildHigh->feed(iBuffer, iStride, iCount, iGroup, iThreadCount);
 		}
 	}
 	else
 	{
-		if (mState[ALIVE])
+		if (mAlive)
 		{
 			iGroup->add_thread(new boost::thread (&KdFileTreeNode::recordChunk, this, iBuffer, iStride, iCount));
 			if (iGroup->size() >= iThreadCount)
@@ -231,7 +263,7 @@ void KdFileTreeNode::recordChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iC
 
 void KdFileTreeNode::openFiles(PointCloudAttributes& iAttributes, float iResolution)
 {
-	if (!mState[LEAF])
+	if (mChildLow && mChildHigh)
 	{
 		mChildLow->openFiles(iAttributes, iResolution);
 		mChildHigh->openFiles(iAttributes, iResolution);
@@ -260,8 +292,14 @@ void KdFileTreeNode::writeChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iCo
 	uint8_t* lPointer = iBuffer;
 	for (int i = 0; i < iCount; i++)
 	{
+		if (mVolumeLimit && mCount > mVolumeLimit)
+		{
+			break;
+		}
 		lPointer = iBuffer + i * iStride;
-		if (contains((float*)lPointer))
+
+		float* lP = (float*)lPointer;
+		if (lP[0] >= lMin[0] && lP[0] <= lMax[0] && lP[1] >= lMin[1] && lP[1] <= lMax[1] && lP[2] >= lMin[2] && lP[2] <= lMax[2])
 		{
 			fwrite(lPointer, 1, iStride, mFile);
 			mCount++;
@@ -271,22 +309,19 @@ void KdFileTreeNode::writeChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iCo
 
 void KdFileTreeNode::write(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, float iOverlap, boost::thread_group*& iGroup, int32_t iThreadCount)
 {
-	if (!mState[LEAF])
+	if (mChildLow && mChildHigh)
 	{
 		mChildLow->write(iBuffer, iStride, iCount, iOverlap, iGroup, iThreadCount);
 		mChildHigh->write(iBuffer, iStride, iCount, iOverlap, iGroup, iThreadCount);
 	}
 	else
 	{
-		if (!mState[DEGENERATE])
+		iGroup->add_thread(new boost::thread (&KdFileTreeNode::writeChunk, this, iBuffer, iStride, iCount, iOverlap));
+		if (iGroup->size() >= iThreadCount)
 		{
-			iGroup->add_thread(new boost::thread (&KdFileTreeNode::writeChunk, this, iBuffer, iStride, iCount, iOverlap));
-			if (iGroup->size() >= iThreadCount)
-			{
-				iGroup->join_all();
-				delete iGroup;
-				iGroup = new boost::thread_group();
-			}
+			iGroup->join_all();
+			delete iGroup;
+			iGroup = new boost::thread_group();
 		}
 	}
 }
@@ -303,7 +338,7 @@ json_spirit::mObject KdFileTreeNode::closeFiles()
 	lNode["count"] = mCount;
 	lNode["path"] = mPath;
 
-	if (!mState[LEAF])
+	if (mChildLow && mChildHigh)
 	{
 		json_spirit::mObject lLow = mChildLow->closeFiles();
 		json_spirit::mObject lHigh = mChildHigh->closeFiles();
@@ -340,9 +375,9 @@ void KdFileTreeNode::deleteFiles()
 
 bool KdFileTreeNode::prune()
 {
-	bool lLeaf = mState[LEAF];
+	bool lLeaf = !(mChildLow && mChildHigh);
 
-	if (!mState[LEAF])
+	if (!lLeaf)
 	{
 		bool lLo = mChildLow->prune();
 		bool lHi = mChildHigh->prune();
@@ -352,7 +387,6 @@ bool KdFileTreeNode::prune()
 			mChildLow = 0;
 			delete mChildHigh;
 			mChildHigh = 0;
-			mState[LEAF] = true;
 		}
 		return false;
 	}
@@ -362,7 +396,7 @@ bool KdFileTreeNode::prune()
 
 uint64_t KdFileTreeNode::collapse(FILE* iFile, uint32_t iStride, float* iMin, float* iMax)
 {
-	if (!mState[LEAF])
+	if (mChildLow && mChildHigh)
 	{
 		return mChildLow->collapse(iFile, iStride, iMin, iMax) + mChildHigh->collapse(iFile, iStride, iMin, iMax);
 	}
@@ -376,6 +410,7 @@ uint64_t KdFileTreeNode::collapse(FILE* iFile, uint32_t iStride, float* iMin, fl
 
 		PointBuffer lPointBuffer(lFile, lCount, iStride, lCount*iStride);
 		lPointBuffer.begin();
+		uint64_t lWritten = 0;
 		while (!lPointBuffer.end())
 		{
 			PointBuffer::Chunk& lChunk = lPointBuffer.next();
@@ -385,19 +420,22 @@ uint64_t KdFileTreeNode::collapse(FILE* iFile, uint32_t iStride, float* iMin, fl
 			{
 				float* lPosition = (float*)(lChunk.mData + i * iStride);
 
-				iMin[0] = std::min<float>(lPosition[0], iMin[0]);
-				iMin[1] = std::min<float>(lPosition[1], iMin[1]);
-				iMin[2] = std::min<float>(lPosition[2], iMin[2]);
-				iMax[0] = std::max<float>(lPosition[0], iMax[0]);
-				iMax[1] = std::max<float>(lPosition[1], iMax[1]);
-				iMax[2] = std::max<float>(lPosition[2], iMax[2]);
+				if (contains(lPosition)) // may be outside due to overlap
+				{
+					iMin[0] = std::min<float>(lPosition[0], iMin[0]);
+					iMin[1] = std::min<float>(lPosition[1], iMin[1]);
+					iMin[2] = std::min<float>(lPosition[2], iMin[2]);
+					iMax[0] = std::max<float>(lPosition[0], iMax[0]);
+					iMax[1] = std::max<float>(lPosition[1], iMax[1]);
+					iMax[2] = std::max<float>(lPosition[2], iMax[2]);
+					fwrite(lChunk.mData + i * iStride, iStride, 1, iFile);
+					lWritten++;
+				}
 			}
-
-			fwrite(lChunk.mData, iStride, lChunk.mSize, iFile);
 		}
 
 		fclose(lFile);
-		return lCount;
+		return lWritten;
 	}
 }
 
@@ -431,10 +469,10 @@ void KdFileTree::construct(std::string iName, uint32_t iLeafsize, float iOverlap
 	uint64_t lPointCount;
 	FILE* lFile = PointCloud::readHeader(iName, &mPointAttributes, lPointCount, mRoot->min, mRoot->max, &mResolution);
 
+	iOverlap *= mResolution;
 	BOOST_LOG_TRIVIAL(info) << "Constructing filetree for " << lPointCount << " points:";
-	BOOST_LOG_TRIVIAL(info) << "   Memory " << availableMemory() / (1024 * 1024) << "MB";
-	BOOST_LOG_TRIVIAL(info) << "   Threads " << std::thread::hardware_concurrency();
 	BOOST_LOG_TRIVIAL(info) << "   Leafsize " << iLeafsize << " points ";
+	BOOST_LOG_TRIVIAL(info) << "   Overlap " << iOverlap << " meters ";
 
 	// pass one - build tree
 	PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());
@@ -522,14 +560,13 @@ void KdFileTree::remove()
 json_spirit::mArray KdFileTree::fill(float iSigma) 
 {
 	json_spirit::mArray lLOD;
-	int lDocId = 1;
 	mResolution *= iSigma;
 
 	// downsample leaf nodes into file "doc...."
-	std::string lName = "doc-" + std::to_string((boost::int64_t)lDocId++);
+	std::string lName = "res-" + std::to_string(mResolution);
 	FILE* lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, mResolution);
 	Downsampler lSampler(lFile, mResolution);
-	process2(lSampler, LEAVES); 
+	process(lSampler, LEAVES); 
 	PointCloud::updateSize(lFile, lSampler.mWritten);
 	fclose(lFile);
 	BOOST_LOG_TRIVIAL(info) << "Resolution = " << mResolution << " points " << lSampler.mWritten;
@@ -558,10 +595,10 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 		mResolution *= iSigma;
 
 	    // downsample leaf nodes into file "doc...."
-		lName = "doc-"+std::to_string((boost::int64_t)lDocId++);
+		lName = "res-" + std::to_string(mResolution);
 		lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, mResolution);
 		Downsampler lSampler(lFile, mResolution);
-		process2(lSampler, LEAVES); 
+		process(lSampler, LEAVES); 
 		PointCloud::updateSize(lFile, lSampler.mWritten);
 		fclose(lFile);
 		BOOST_LOG_TRIVIAL(info) << "Resolution = " << mResolution << " points " << lSampler.mWritten;
@@ -615,7 +652,7 @@ void KdFileTree::processNode(KdFileTree::InorderOperation& iProcessor, KdFileTre
 }
 
 
-void KdFileTree::process2(KdFileTree::InorderOperation& iProcessor, uint8_t iNodes)
+void KdFileTree::process(KdFileTree::InorderOperation& iProcessor, uint8_t iNodes)
 {
 	std::vector<KdFileTreeNode*> lVector;
 	getNodes(lVector, *mRoot, iNodes);

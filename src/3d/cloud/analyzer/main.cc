@@ -29,29 +29,13 @@ bool processFile(json_spirit::mObject& iObject)
 	lFileTree.construct("cloud", std::min((uint64_t)(availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
 		
 	Analyzer lAnalyzer;
-	lFileTree.process2(lAnalyzer, KdFileTree::LEAVES);
+	lFileTree.process(lAnalyzer, KdFileTree::LEAVES);
 	lFileTree.remove();
 
-	// read meta
-	/*
-	std::ifstream lStream("meta.json");
-	json_spirit::mValue lValue;
-	json_spirit::read_stream(lStream, lValue);
-	lStream.close();
-	*/
-
+	// update resoltion in ply file
 	lFile = PointCloud::updateHeader("cloud");
 	PointCloud::updateResolution(lFile, lAnalyzer.mResolution);
-	/*
-	json_spirit::mObject& lMeta = lValue.get_obj();
-	lMeta["resolution"] = lAnalyzer.mResolution;// + lAnalyzer.mVariance;
 
-	// write meta
-	
-	std::ofstream lOstream("meta.json");
-	json_spirit::write_stream(lValue, lOstream);
-	lOstream.close();
-	*/
 	return true;
 };
 

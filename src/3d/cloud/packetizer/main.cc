@@ -24,7 +24,7 @@ bool processFile(json_spirit::mObject& iObject)
 	lFileTree.fill(KdFileTree::SIGMA);
 
 	PacketProcessor lProcessor;
-	lFileTree.process2(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
+	lFileTree.process(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
 	lFileTree.remove();
 
 	// write root

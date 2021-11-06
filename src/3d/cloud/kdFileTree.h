@@ -40,6 +40,7 @@ class KdFileTreeNode
 		KdFileTreeNode* mChildLow;
 		KdFileTreeNode* mChildHigh;
 		uint64_t mCount;
+		uint64_t mVolumeLimit;
 
 		void feed(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, boost::thread_group*& iGroup, int32_t iThreadCount);
 		bool grow(std::string iIndent, uint32_t iLeafsize);
@@ -66,10 +67,7 @@ class KdFileTreeNode
 
 		double median[3];
 
-		static const int LEAF = 0;
-		static const int ALIVE = 1;
-		static const int DEGENERATE = 2;
-		std::vector<bool> mState;
+		bool mAlive;
 
 		FILE* mFile;
 };
@@ -136,7 +134,7 @@ class KdFileTree
 				InorderOperation();
 		};
 
-		void process2(InorderOperation& iProcessor, uint8_t iNodes);
+		void process(InorderOperation& iProcessor, uint8_t iNodes);
 
 	
 	private:

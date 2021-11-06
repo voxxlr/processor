@@ -50,6 +50,31 @@ unsigned long long availableMemory()
 
 unsigned long long availableMemory()
 {
+	std::ifstream lStream(std::string("/proc/meminfo"));
+
+	if (lStream)
+	{
+		std::string lLine;
+		while (std::getline(lStream, lLine))
+		{
+			std::istringstream lStream(lLine);
+			std::string lName;
+			std::string lValue;
+			if (lStream >> lName >> lValue)
+			{
+				BOOST_LOG_TRIVIAL(info) << lName << ' ' << lValue << '\n';
+				if (lName == "MemAvailable:")
+				{
+					return std::stol(lValue)*1024;
+				}
+			}
+			else
+			{
+				BOOST_LOG_TRIVIAL(info) << "/proc/meminfo has wrong format: " << line;
+			}
+		}
+	}
+
 	struct sysinfo sys_info;
 	sysinfo(&sys_info);
 	return sys_info.freeram * sys_info.mem_unit;
@@ -94,8 +119,9 @@ namespace task
 		//
 		// read json parameter
 		//
-		BOOST_LOG_TRIVIAL(info) << "P  " << boost::filesystem::current_path();
-		BOOST_LOG_TRIVIAL(info) << "C  " << iConfig;
+		BOOST_LOG_TRIVIAL(info) << "Path    :" << boost::filesystem::current_path();
+		BOOST_LOG_TRIVIAL(info) << "Memory  :" << availableMemory() / (1024 * 1024) << "MB";
+		BOOST_LOG_TRIVIAL(info) << "Threads :" << std::thread::hardware_concurrency();
 		json_spirit::mValue lValue;
 		std::stringstream lStream(iConfig);
 		json_spirit::read_stream(lStream, lValue);

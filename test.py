@@ -25,12 +25,12 @@ logF.write("################\n")
 root = os.path.dirname(os.path.abspath(__file__))
 logF.write(root+"\n")
 
-''''
-def runVoxxlr(name,args):
-    name = f"{root}/bin/{name}.exe"
-    logF.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
-    #logF.write(json.dumps(args,sort_keys=True,indent=4)+"\n")
-    process = subprocess.Popen([name,json.dumps(args)], stdout=logF, stderr=logF, shell=True)
+'''
+
+test me
+if os.name == "posix":
+    ulimit -Sn 4096
+    process = subprocess.Popen("ulimit -Sn 4096", stdout=logF, stderr=logF, shell=True,cwd=".")
     stdout, stderr = process.communicate()
     process.wait()
 '''
@@ -90,7 +90,7 @@ if config["type"] == 1: #"cloud"
         runVoxxlr("cloud/analyzer", { })
    
     runVoxxlr("cloud/filter", { "density": None })
-
+   
     runVoxxlr("cloud/packetizer", { })
 
 elif config["type"] == 2:#"map"
