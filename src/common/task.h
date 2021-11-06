@@ -70,7 +70,7 @@ unsigned long long availableMemory()
 			}
 			else
 			{
-				BOOST_LOG_TRIVIAL(info) << "/proc/meminfo has wrong format: " << line;
+				BOOST_LOG_TRIVIAL(info) << "/proc/meminfo has wrong format: " << lLine;
 			}
 		}
 	}
