@@ -44,7 +44,7 @@ unsigned long long availableMemory()
 }
 
 
-#elif defined (LINUX)
+#elif defined (__linux__)
 
 #include <sys/sysinfo.h>
 
