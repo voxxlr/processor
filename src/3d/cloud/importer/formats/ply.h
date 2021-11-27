@@ -6,8 +6,8 @@ class PlyImporter : public CloudImporter
 {
 	public:
 
-		PlyImporter(uint8_t iCoords, float iScalar, float iResolution);
+		PlyImporter(json_spirit::mObject& iConfig);
 	
-		json_spirit::mObject import(std::string iName, glm::dvec3* iCenter);
+		json_spirit::mObject import(json_spirit::mArray iFiles, std::string iOutput);
 
 }; 

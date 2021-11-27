@@ -6,9 +6,9 @@ class PtxImporter : public CloudImporter
 {
 	public:
 
-		PtxImporter(uint8_t iCoords, float iScalar, float iResolution);
+		PtxImporter(json_spirit::mObject& iConfig);
 	
-		json_spirit::mObject import (std::string iName, glm::dvec3* iCenter);
+		json_spirit::mObject import (std::string iName);
 
 	private:
 	

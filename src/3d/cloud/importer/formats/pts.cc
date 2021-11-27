@@ -3,12 +3,12 @@
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 
-PtsImporter::PtsImporter(uint8_t iCoords, float iScalar, float iResolution)
-: CloudImporter(iCoords, iScalar, iResolution)
+PtsImporter::PtsImporter(json_spirit::mObject& iConfig)
+: CloudImporter(iConfig)
 {
 };
 
-json_spirit::mObject PtsImporter::import(std::string iName, glm::dvec3* iCenter)
+json_spirit::mObject PtsImporter::import(std::string iName)
 {
 	uint64_t lPointCount = 0;
     try
@@ -40,36 +40,32 @@ json_spirit::mObject PtsImporter::import(std::string iName, glm::dvec3* iCenter)
 				break;
 		};
 
+
 		// aabb pass
-		if (!iCenter)
+		BOOST_LOG_TRIVIAL(info) << "AABB pass  ";
+		// AABB pass
+		fseek(lInputFile, 0, SEEK_SET);
+		fgets(lLine, 256, lInputFile); // just skip first line ..
+		while (fgets(lLine, 256, lInputFile))
 		{
-			BOOST_LOG_TRIVIAL(info) << "AABB pass  ";
-			// AABB pass
-			fseek(lInputFile, 0, SEEK_SET);
-			fgets(lLine, 256, lInputFile); // just skip first line ..
-			while (fgets(lLine, 256, lInputFile))
-			{
-				int lIntensity;
-				double lCoords[3];
-				sscanf(lLine, "%lf %lf %lf", lCoords+0, lCoords+1, lCoords+2);
-				convertCoords(lCoords);
-				growMinMax(lCoords);
-			}
-
-			mCenter[0] = (mMinD[0] + mMaxD[0])/2;
-			mCenter[1] = (mMinD[1] + mMaxD[1])/2;
-			mCenter[2] = (mMinD[2] + mMaxD[2])/2;
-
-			center(mMinD);
-			center(mMaxD);
+			int lIntensity;
+			double lCoords[3];
+			sscanf(lLine, "%lf %lf %lf", lCoords+0, lCoords+1, lCoords+2);
+			convertCoords(lCoords);
+			growMinMax(lCoords);
 		}
-		else
-		{
-			mCenter[0] = (*iCenter)[0];
-			mCenter[1] = (*iCenter)[1];
-			mCenter[2] = (*iCenter)[2];
-			convertCoords(mCenter);
-		}
+
+		glm::dvec3 lCenter;
+		lCenter[0] = (mMinD[0] + mMaxD[0])/2;
+		lCenter[1] = (mMinD[1] + mMaxD[1])/2;
+		lCenter[2] = (mMinD[2] + mMaxD[2])/2;
+
+		mMinD[0] -= lCenter[0];
+		mMinD[1] -= lCenter[1];
+		mMinD[2] -= lCenter[2];
+		mMaxD[0] -= lCenter[0];
+		mMaxD[1] -= lCenter[1];
+		mMaxD[2] -= lCenter[2];
 
 		BOOST_LOG_TRIVIAL(info) << "Main pass";
 
@@ -77,7 +73,7 @@ json_spirit::mObject PtsImporter::import(std::string iName, glm::dvec3* iCenter)
 		Point lPoint(lCloud);
 
 		uint64_t lTotal = 0;
-		FILE* lOutputFile = PointCloud::writeHeader("cloud", lCloud, 0, 0, 0, mResolution);
+		FILE* lOutputFile = PointCloud::writeHeader("cloud", lCloud);
 		IntensityType* lIntensityAttribute = (IntensityType*)lPoint.getAttribute(lIntensityIndex);
 		ColorType* lColorAttribute = (ColorType*)lPoint.getAttribute(lColorIndex);
 
@@ -89,13 +85,11 @@ json_spirit::mObject PtsImporter::import(std::string iName, glm::dvec3* iCenter)
 			char lColor[3];
 			double lCoords[3];
 			sscanf(lLine, "%lf %lf %lf %d %hhu %hhu %hhu", lCoords+0, lCoords+1, lCoords+2, &lIntensity, lColor+0, lColor+1, lColor+2);
-			convertCoords(lCoords);
 
-			center(lCoords);
-			if (iCenter)
-			{
-				growMinMax(lPoint.position);
-			}
+			convertCoords(lCoords);
+			lCoords[0] -= lCenter[0];
+			lCoords[1] -= lCenter[1];
+			lCoords[2] -= lCenter[2];
 
 			// assign to point
 			if (lIntensityAttribute)

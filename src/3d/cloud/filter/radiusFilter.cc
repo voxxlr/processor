@@ -5,29 +5,24 @@
 
 #include "radiusFilter.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+float RadiusFilter::R = 5; // mutliple of resolution
+float RadiusFilter::R3 = RadiusFilter::R*RadiusFilter::R*RadiusFilter::R;
+
 RadiusFilter::RadiusFilter(float iResolution, float iDensity)
 : InorderOperation("Radiusfilter")
-, mCutoff(4.1887*R3*iDensity)
+, mMinPoints(4.0/3.0*M_PI*R3*iDensity)
 , mRadius(R*iResolution)
 {
 	BOOST_LOG_TRIVIAL(info) << "Resolution = " << iResolution;
 	BOOST_LOG_TRIVIAL(info) << "Density = " << iDensity;
 	BOOST_LOG_TRIVIAL(info) << "Radius = " << mRadius;
-	BOOST_LOG_TRIVIAL(info) << "Cutoff = " << mCutoff;
+	BOOST_LOG_TRIVIAL(info) << "Min # of Points = " << mMinPoints;
 }
 
-RadiusFilter::RadiusFilter(float iResolution, int iRadius, int iCutoff)
-: InorderOperation("Radiusfilter")
-, mCutoff(iCutoff)
-, mRadius(iRadius*iResolution)
-{
-	BOOST_LOG_TRIVIAL(info) << "Resolution = " << iResolution;
-	BOOST_LOG_TRIVIAL(info) << "Radius = " << mRadius;
-	BOOST_LOG_TRIVIAL(info) << "Cutoff = " << mCutoff;
-}
-
-
-void RadiusFilter::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
+void RadiusFilter::processNode(KdFileTreeNode& iNode, PointCloud& iCloud)
 {
 	KdTree<KdSpatialDomain> lTree(iCloud);
 	lTree.construct();
@@ -36,7 +31,7 @@ void RadiusFilter::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
 	uint32_t lSelected = 0;
 	for (uint32_t p=0; p<iCloud.size(); p++)
 	{
-		if (lTree.detect(p, mRadius, mCutoff))
+		if (lTree.detect(p, mRadius, mMinPoints))
 		{
 			iCloud[p]->write(lFile);
 			lSelected++;
@@ -47,7 +42,3 @@ void RadiusFilter::processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud)
 
 	BOOST_LOG_TRIVIAL(info) << "Filtered " << iNode.mPath << " to " << (lSelected*100.0)/iCloud.size() << "%";
 };
-
-// This is not done... try to do this only for the split axis in the kdTree... might be enough
-float RadiusFilter::R = 5;
-float RadiusFilter::R3 = RadiusFilter::R*RadiusFilter::R*RadiusFilter::R;

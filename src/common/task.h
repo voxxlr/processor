@@ -15,7 +15,7 @@
 #include <boost/log/sinks.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
-#include <boost/log/sources/record_ostream.hpp>
+#include <boost/log/sources/record_ostream.hpp>    
 
 #include <boost/log/attributes/attribute.hpp>
 #include <boost/log/attributes/attribute_cast.hpp>
@@ -62,7 +62,6 @@ unsigned long long availableMemory()
 			std::string lValue;
 			if (lStream >> lName >> lValue)
 			{
-				BOOST_LOG_TRIVIAL(info) << lName << ' ' << lValue << '\n';
 				if (lName == "MemAvailable:")
 				{
 					return std::stol(lValue)*1024;
@@ -92,9 +91,7 @@ namespace task
 
 	void initialize(std::string iName, char* iConfig, boost::function<bool(json_spirit::mObject&)> iMessageHandler)
 	{
-		#ifdef WIN32
-		boost::log::add_console_log(std::cout, boost::log::keywords::format = ">> %Message%");
-		#endif
+		//boost::log::add_console_log(std::cout, boost::log::keywords::format = ">> %Message%");
 
 		boost::log::add_file_log
 		(
@@ -122,6 +119,8 @@ namespace task
 		BOOST_LOG_TRIVIAL(info) << "Path    :" << boost::filesystem::current_path();
 		BOOST_LOG_TRIVIAL(info) << "Memory  :" << availableMemory() / (1024 * 1024) << "MB";
 		BOOST_LOG_TRIVIAL(info) << "Threads :" << std::thread::hardware_concurrency();
+		BOOST_LOG_TRIVIAL(info) << "Params :" << iConfig;
+
 		json_spirit::mValue lValue;
 		std::stringstream lStream(iConfig);
 		json_spirit::read_stream(lStream, lValue);

@@ -3,8 +3,8 @@
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 
-PtxImporter::PtxImporter(uint8_t iCoords, float iScalar, float iResolution)
-: CloudImporter(iCoords, iScalar, iResolution)
+PtxImporter::PtxImporter(json_spirit::mObject& iConfig)
+: CloudImporter(iConfig)
 {
 };
 
@@ -74,7 +74,7 @@ uint64_t PtxImporter::readHeader(FILE* iFile, char* iLine, glm::dmat4& iMatrix)
 	return lColumns*lRows;
 }
 
-json_spirit::mObject PtxImporter::import(std::string iName, glm::dvec3* iCenter)
+json_spirit::mObject PtxImporter::import(std::string iName)
 {
 	uint64_t lTotalCount = 0;
     try
@@ -106,63 +106,57 @@ json_spirit::mObject PtxImporter::import(std::string iName, glm::dvec3* iCenter)
 		int lColorIndex = lAttributes.getAttributeIndex(Attribute::COLOR);
 
 		// AABB pass
-		if (!iCenter)
+		BOOST_LOG_TRIVIAL(info) << "AABB pass  ";
+		fseek(lInputFile, 0, SEEK_SET);
+		while (fgets(lLine, 256, lInputFile))
 		{
-			BOOST_LOG_TRIVIAL(info) << "AABB pass  ";
-			fseek(lInputFile, 0, SEEK_SET);
-			while (fgets(lLine, 256, lInputFile))
-			{
-				glm::dvec4 lCoords;
+			glm::dvec4 lCoords;
 		
-				lCoords[3] = 1;
-				uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
-				for (uint64_t i=0; i<lPointCount; i++)
+			lCoords[3] = 1;
+			uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
+			for (uint64_t i=0; i<lPointCount; i++)
+			{
+				if (fgets(lLine,1024,lInputFile)) 
 				{
-					if (fgets(lLine,1024,lInputFile)) 
+					double lX, lY, lZ;
+					//sscanf(lLine, "%lf %lf %lf", &lCoords[0], &lCoords[1], &lCoords[2]);
+					sscanf(lLine, "%lf %lf %lf", &lX, &lY, &lZ);
+					if (lX != 0 && lY != 0 && lZ != 0)
 					{
-						double lX, lY, lZ;
-						//sscanf(lLine, "%lf %lf %lf", &lCoords[0], &lCoords[1], &lCoords[2]);
-						sscanf(lLine, "%lf %lf %lf", &lX, &lY, &lZ);
-						if (lX != 0 && lY != 0 && lZ != 0)
-						{
-							lCoords[0] = lX;
-							lCoords[1] = lY;
-							lCoords[2] = lZ;
-							lCoords= lMatrix*lCoords;
-							convertCoords(&lCoords[0]);
-							growMinMax(&lCoords[0]);
-						}
-					}
-
-					if (i%10000000 == 0)
-					{
-						BOOST_LOG_TRIVIAL(info) << "AABB pass at " << i << " points";
+						lCoords[0] = lX;
+						lCoords[1] = lY;
+						lCoords[2] = lZ;
+						lCoords= lMatrix*lCoords;
+						convertCoords(&lCoords[0]);
+						growMinMax(&lCoords[0]);
 					}
 				}
+
+				if (i%10000000 == 0)
+				{
+					BOOST_LOG_TRIVIAL(info) << "AABB pass at " << i << " points";
+				}
 			}
-
-			mCenter[0] = (mMinD[0] + mMaxD[0])/2;
-			mCenter[1] = (mMinD[1] + mMaxD[1])/2;
-			mCenter[2] = (mMinD[2] + mMaxD[2])/2;
-
-			center(mMinD);
-			center(mMaxD);
-		}
-		else
-		{
-			mCenter[0] = (*iCenter)[0];
-			mCenter[1] = (*iCenter)[1];
-			mCenter[2] = (*iCenter)[2];
-			convertCoords(mCenter);
 		}
 
+		glm::dvec3 lCenter;
+		lCenter[0] = (mMinD[0] + mMaxD[0]) / 2;
+		lCenter[1] = (mMinD[1] + mMaxD[1]) / 2;
+		lCenter[2] = (mMinD[2] + mMaxD[2]) / 2;
+
+		mMinD[0] -= lCenter[0];
+		mMinD[1] -= lCenter[1];
+		mMinD[2] -= lCenter[2];
+		mMaxD[0] -= lCenter[0];
+		mMaxD[1] -= lCenter[1];
+		mMaxD[2] -= lCenter[2];
 
 		BOOST_LOG_TRIVIAL(info) << "Main pass";
 
 		// Main pass		
 		Point lPoint(lAttributes);
 
-		FILE* lOutputFile = PointCloud::writeHeader("cloud", lAttributes, 0, 0, 0, mResolution);
+		FILE* lOutputFile = PointCloud::writeHeader("cloud", lAttributes);
 		IntensityType* lIntensityAttribute = (IntensityType*)lPoint.getAttribute(lIntensityIndex);
 		ColorType* lColorAttribute = (ColorType*)lPoint.getAttribute(lColorIndex);
 
@@ -197,12 +191,9 @@ json_spirit::mObject PtxImporter::import(std::string iName, glm::dvec3* iCenter)
 						lCoords[2] = lZ;
 						lCoords = lMatrix*lCoords;
 						convertCoords(&lCoords[0]);
-
-						center(&lCoords[0]);
-						if (iCenter)
-						{
-							growMinMax(lPoint.position);
-						}
+						lCoords[0] -= lCenter[0];
+						lCoords[1] -= lCenter[1];
+						lCoords[2] -= lCenter[2];
 
 						// assign to point
 						if (lIntensityAttribute)

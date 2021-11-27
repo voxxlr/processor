@@ -447,8 +447,7 @@ const float KdFileTree::SIGMA = 1.41421356237f; // cube root of 3 + experimental
 //std::thread::hardware_concurrency()
 
 KdFileTree::KdFileTree()
-	: mRoot(new KdFileTreeNode("n"))
-	, mResolution(0)
+: mRoot(new KdFileTreeNode("n"))
 {
 }
 
@@ -467,12 +466,43 @@ void KdFileTree::load(std::string iName)
 void KdFileTree::construct(std::string iName, uint32_t iLeafsize, float iOverlap)
 {
 	uint64_t lPointCount;
-	FILE* lFile = PointCloud::readHeader(iName, &mPointAttributes, lPointCount, mRoot->min, mRoot->max, &mResolution);
+	float lResolution;
+	FILE* lFile = PointCloud::readHeader(iName, &mPointAttributes, lPointCount, mRoot->min, mRoot->max, &lResolution);
 
-	iOverlap *= mResolution;
 	BOOST_LOG_TRIVIAL(info) << "Constructing filetree for " << lPointCount << " points:";
 	BOOST_LOG_TRIVIAL(info) << "   Leafsize " << iLeafsize << " points ";
 	BOOST_LOG_TRIVIAL(info) << "   Overlap " << iOverlap << " meters ";
+
+
+	/*
+	BOOST_LOG_TRIVIAL(info) << "1.0";
+	FILE* lDDDD = PointCloud::writeHeader(iName + "DDD", mPointAttributes, 0);
+
+	BOOST_LOG_TRIVIAL(info) << "1.1";
+	// pass one - build tree
+	PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());
+
+	BOOST_LOG_TRIVIAL(info) << "1.2";
+	lPointBuffer.begin();
+	size_t lTotal = 0;
+	while (!lPointBuffer.end())
+	{
+		PointBuffer::Chunk& lChunk = lPointBuffer.next();
+
+		BOOST_LOG_TRIVIAL(info) << "1.----" << lChunk.mSize;
+		for (size_t i = 0; i < lChunk.mSize; i++)
+		{
+			uint8_t* lPointer = lChunk.mData + i * lPointBuffer.mStride;
+			fwrite(lPointer, 1, lPointBuffer.mStride, lDDDD);
+			lTotal++;
+		}
+	}
+	PointCloud::updateSize(lDDDD, lTotal);
+	BOOST_LOG_TRIVIAL(info) << "DONE";
+	fclose(lDDDD);
+	exit(0);
+	*/
+
 
 	// pass one - build tree
 	PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());
@@ -492,7 +522,7 @@ void KdFileTree::construct(std::string iName, uint32_t iLeafsize, float iOverlap
 	} while (mRoot->grow("", iLeafsize));
 
 	BOOST_LOG_TRIVIAL(info) << "Opening Files";
-	mRoot->openFiles(mPointAttributes, mResolution);
+	mRoot->openFiles(mPointAttributes, lResolution);
 
 	// pass two - write points into leaves
 	BOOST_LOG_TRIVIAL(info) << "Writing file tree ";
@@ -531,16 +561,16 @@ bool KdFileTree::hasAttribute(const std::string& iName)
 // Collaps the file tree back into a single file
 //
 
-uint64_t KdFileTree::collapse(std::string iName)
+uint64_t KdFileTree::collapse(std::string iName, float iResolution)
 {
-	boost::this_thread::sleep_for(boost::chrono::milliseconds(1000)); // give os time to GC ... ???
+	boost::this_thread::sleep_for(boost::chrono::milliseconds(20)); // give os time to GC ... ???
 
 	float lMin[3];
 	float lMax[3];
 	memcpy(lMin, PointCloud::MIN, sizeof(lMin));
 	memcpy(lMax, PointCloud::MAX, sizeof(lMax));
 
-	FILE* lFile = PointCloud::writeHeader(iName, mPointAttributes, 0, 0, 0, mResolution);
+	FILE* lFile = PointCloud::writeHeader(iName, mPointAttributes, 0, 0, 0, iResolution);
 	uint64_t lTotal = mRoot->collapse(lFile, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), lMin, lMax);
 	PointCloud::updateSpatialBounds(lFile, lMin, lMax);
 	PointCloud::updateSize(lFile, lTotal);
@@ -557,25 +587,25 @@ void KdFileTree::remove()
 	std::remove("index.json");
 }
 
-json_spirit::mArray KdFileTree::fill(float iSigma) 
+json_spirit::mArray KdFileTree::fill(float iSigma, float iResolution) 
 {
 	json_spirit::mArray lLOD;
-	mResolution *= iSigma;
+	iResolution *= iSigma;
 
 	// downsample leaf nodes into file "doc...."
-	std::string lName = "res-" + std::to_string(mResolution);
-	FILE* lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, mResolution);
-	Downsampler lSampler(lFile, mResolution);
+	std::string lName = "res-" + std::to_string(iResolution);
+	FILE* lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, iResolution);
+	Downsampler lSampler(lFile, iResolution);
 	process(lSampler, LEAVES); 
 	PointCloud::updateSize(lFile, lSampler.mWritten);
 	fclose(lFile);
-	BOOST_LOG_TRIVIAL(info) << "Resolution = " << mResolution << " points " << lSampler.mWritten;
+	BOOST_LOG_TRIVIAL(info) << "Resolution = " << iResolution << " points " << lSampler.mWritten;
 
 	uint64_t lPointCount;
 	while(!mRoot->prune()) // discard leaf layer
 	{
 		FILE* lFile = PointCloud::readHeader(lName, NULL, lPointCount);
-		mRoot->openFiles(mPointAttributes, mResolution);
+		mRoot->openFiles(mPointAttributes, iResolution);
 
 		PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());
 		lPointBuffer.begin();
@@ -584,7 +614,7 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 			PointBuffer::Chunk& lChunk = lPointBuffer.next();
 
 			boost::thread_group* lGroup = new boost::thread_group();
-			mRoot->write(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, mResolution, lGroup, std::thread::hardware_concurrency() );
+			mRoot->write(lChunk.mData, lPointBuffer.mStride, lChunk.mSize, iResolution, lGroup, std::thread::hardware_concurrency() );
 			lGroup->join_all();
 			delete lGroup;
 		}
@@ -592,16 +622,16 @@ json_spirit::mArray KdFileTree::fill(float iSigma)
 
 		mRoot->closeFiles();
 
-		mResolution *= iSigma;
+		iResolution *= iSigma;
 
 	    // downsample leaf nodes into file "doc...."
-		lName = "res-" + std::to_string(mResolution);
-		lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, mResolution);
-		Downsampler lSampler(lFile, mResolution);
+		lName = "res-" + std::to_string(iResolution);
+		lFile = PointCloud::writeHeader(lName, mPointAttributes, 0, mRoot->min, mRoot->max, iResolution);
+		Downsampler lSampler(lFile, iResolution);
 		process(lSampler, LEAVES); 
 		PointCloud::updateSize(lFile, lSampler.mWritten);
 		fclose(lFile);
-		BOOST_LOG_TRIVIAL(info) << "Resolution = " << mResolution << " points " << lSampler.mWritten;
+		BOOST_LOG_TRIVIAL(info) << "Resolution = " << iResolution << " points " << lSampler.mWritten;
 	}
 
 	// reload tree

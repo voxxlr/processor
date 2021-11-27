@@ -20,13 +20,13 @@ class PointBuffer
 	
 	public:
 
-		PointBuffer(FILE* iFile, uint64_t iCount, uint32_t iStride, uint64_t iMemory);
+		PointBuffer(FILE* iFile, size_t iCount, uint32_t iStride, size_t iMemory);
 		~PointBuffer();
 
 		typedef struct
 		{
 			uint8_t* mData;
-			uint32_t mSize;
+			size_t mSize;
 		} Chunk;
 
 		void begin();
@@ -37,14 +37,14 @@ class PointBuffer
 
 	private:
 
-		uint64_t POINTS_PER_IO;
+		size_t POINTS_PER_IO;
 
-		int32_t mIter;
-		int32_t mCurrent;
+		size_t mIter;
+		size_t mCurrent;
 		Chunk mChunk;
 
-		uint32_t mCount;
+		size_t mCount;
 		FILE* mFile;
-		uint64_t mDatastart;
+		size_t mDatastart;
 }; 
   

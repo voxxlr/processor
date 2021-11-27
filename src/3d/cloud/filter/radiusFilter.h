@@ -10,12 +10,11 @@ class RadiusFilter : public KdFileTree::InorderOperation
 		static float R3;
 
 		RadiusFilter(float iResolution, float iDensity);
-		RadiusFilter(float iResolution, int iRadius, int iCutoff);
 
 	protected:
 
 		float mRadius;
-		int mCutoff;
+		int mMinPoints;
 
-		void processLeaf(KdFileTreeNode& iNode, PointCloud& iCloud);
+		void processNode(KdFileTreeNode& iNode, PointCloud& iCloud);
 };

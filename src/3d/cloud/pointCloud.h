@@ -136,6 +136,8 @@ class PointCloud : public PointCloudAttributes
 		static void updateResolution(FILE* iFile, float iResolution);
 		static FILE* writeHeader(std::string iName, PointCloudAttributes& iAttributes, uint64_t iSize = 0, float* iMin = 0, float* iMax = 0, float iResolution = 0);
 		static FILE* readHeader(std::string iName, PointCloudAttributes* iAttributes, uint64_t& iSize, float* iMin = 0, float* iMax = 0, float* iResolution = 0);
+		static float readResolution(std::string iName);
+		uint64_t readPointCount(std::string iName);
 		static void updateSize(FILE* iFile, uint64_t iSize);
 		static FILE* updateHeader(std::string iName);
 

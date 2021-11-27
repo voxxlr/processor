@@ -16,16 +16,16 @@ class PacketProcessor : public KdFileTree::InorderOperation
 
 		PacketProcessor();
 
-		uint64_t mTotalStorage;
-		uint64_t mTotalWritten;
-
 		json_spirit::mObject mRootInfo;
-
-		void initTraveral(PointCloudAttributes& iAttributes);
-
+		
 	protected:
 
 		boost::mutex mCountLock;
+		uint64_t mTotalStorage;
+		uint64_t mTotalWritten;
+
+		void initTraveral(PointCloudAttributes& iAttributes);
+		void completeTraveral(PointCloudAttributes& iAttributes);
 
 		// Normal Calculation
 		static void computeNormals(PointCloud& iPoints, uint32_t iNormalIndex);

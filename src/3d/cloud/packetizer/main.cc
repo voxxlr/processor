@@ -17,39 +17,26 @@
 
 #include "packetProcessor.h"
 
-bool processFile(json_spirit::mObject& iObject)
+bool processFile(json_spirit::mObject& iConfig)
 {
+	float lResolution = PointCloud::readResolution(iConfig["file"].get_str());
+
 	KdFileTree lFileTree;
-	lFileTree.construct("cloud", 120000, 1.6*KdFileTree::SIGMA);
-	lFileTree.fill(KdFileTree::SIGMA);
+	lFileTree.construct(iConfig["file"].get_str(), 120000, 1.6*KdFileTree::SIGMA*lResolution);
+	lFileTree.fill(KdFileTree::SIGMA, lResolution);
 
 	PacketProcessor lProcessor;
 	lFileTree.process(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
 	lFileTree.remove();
 
-	// write root
-	std::ofstream lStream("root.json");
-	json_spirit::write_stream(json_spirit::mValue(lProcessor.mRootInfo), lStream);
-	lStream.close();
+	json_spirit::mObject lResult;
+	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 
 	return true;
 };
 
 int main(int argc, char *argv[])
 {
-	/*
-	PointCloudAttributes lAttributes;
-
-	NormalProcessor lProcessor0;
-
-	PointCloud lCloud;
-	lCloud.readFile(std::string("n0000"));
-	lProcessor0.initTraveral(lAttributes);
-	lCloud.addAttributes(lAttributes);
-	lProcessor0.computeNormals(lCloud, lCloud.getAttributeIndex(Attribute::NORMAL));
-	lCloud.writeFile(std::string("n0000_N"));
-	*/
-	//task::initialize("packetizer", "{ }", boost::function<bool(json_spirit::mObject&)>(processFile));
 	task::initialize("packetizer", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 
     return EXIT_SUCCESS;

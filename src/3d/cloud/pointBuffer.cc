@@ -14,7 +14,7 @@
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 
-PointBuffer::PointBuffer(FILE* iFile, uint64_t iCount, uint32_t iStride, uint64_t iMemory)
+PointBuffer::PointBuffer(FILE* iFile, size_t iCount, uint32_t iStride, size_t iMemory)
 : mStride(iStride)
 , mFile(iFile)
 , mDatastart(ftell(iFile))
@@ -22,6 +22,8 @@ PointBuffer::PointBuffer(FILE* iFile, uint64_t iCount, uint32_t iStride, uint64_
 , mCurrent(-1)
 , POINTS_PER_IO(std::min(uint64_t(0.9*iMemory)/iStride, iCount))
 {
+	POINTS_PER_IO = std::min((size_t)200000000, POINTS_PER_IO);
+	//BOOST_LOG_TRIVIAL(info) << "POINTS_PER_IO =" << POINTS_PER_IO;
 	mChunk.mData = new uint8_t[POINTS_PER_IO*iStride];
 }
 
@@ -32,6 +34,7 @@ PointBuffer::~PointBuffer()
 
 void PointBuffer::begin()
 {
+	fseek(mFile, mDatastart, SEEK_SET);
 	mIter = 0;
 }
 
@@ -42,11 +45,10 @@ bool PointBuffer::end()
 
 PointBuffer::Chunk& PointBuffer::next()
 {
-	if (mCurrent != mIter)
+	if (mCurrent != mIter) 
 	{
-		mChunk.mSize = (mCount - (mIter* POINTS_PER_IO))/ POINTS_PER_IO ? POINTS_PER_IO : mCount % POINTS_PER_IO;
-		fseek(mFile, mDatastart + mIter * mStride * POINTS_PER_IO, SEEK_SET);
-		fread(mChunk.mData, mStride, mChunk.mSize, mFile);
+		mChunk.mSize = fread(mChunk.mData, mStride, POINTS_PER_IO, mFile);
+		BOOST_LOG_TRIVIAL(info) << "fread " << mChunk.mSize;
 		mCurrent = mIter;
 	}
 

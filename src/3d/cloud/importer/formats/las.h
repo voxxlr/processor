@@ -7,9 +7,9 @@ class LasImporter : public CloudImporter
 {
 	public:
 
-		LasImporter(uint8_t iCoords, float iScalar, float iResolution);
+		LasImporter(json_spirit::mObject& iConfig);
 	
-		json_spirit::mObject import (std::string iName, glm::dvec3* iCenter);
+		json_spirit::mObject import (std::string iName);
 
 	//	uint64_t append(FILE* iFIle, std::string iName, PointCloud& iCloud);
 }; 

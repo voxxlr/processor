@@ -20,21 +20,29 @@
 bool processFile(json_spirit::mObject& iObject)
 {
 	uint64_t lPointCount; 
-	FILE* lFile = PointCloud::readHeader("cloud", 0, lPointCount);
+	FILE* lFile = PointCloud::readHeader(iObject["file"].get_str(), 0, lPointCount);
 	fclose(lFile);
 
 	uint64_t lThreads = std::thread::hardware_concurrency();
 	// 150 bytes per point includes kd tree memory file handles etc. 
 	KdFileTree lFileTree;
-	lFileTree.construct("cloud", std::min((uint64_t)(availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
-		
+	lFileTree.construct(iObject["file"].get_str(), std::min((uint64_t)(availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
+
+	//lFileTree.collapse("COLLAPSED", 0);
+	//exit(0);
+
 	Analyzer lAnalyzer;
 	lFileTree.process(lAnalyzer, KdFileTree::LEAVES);
 	lFileTree.remove();
 
-	// update resoltion in ply file
-	lFile = PointCloud::updateHeader("cloud");
+	// update resolution in ply file
+	lFile = PointCloud::updateHeader(iObject["file"].get_str());
 	PointCloud::updateResolution(lFile, lAnalyzer.mResolution);
+
+	json_spirit::mObject lResult;
+	lResult["resolution"] = lAnalyzer.mResolution;
+	lResult["variance"] = lAnalyzer.mVariance;
+	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 
 	return true;
 };

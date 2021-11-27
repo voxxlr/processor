@@ -343,6 +343,23 @@ Attribute* PointCloud::getAttribute(Point& iPoint, const std::string& iName)
 // Reading
 //
 
+uint64_t PointCloud::readPointCount(std::string iName)
+{
+	uint64_t lPointCount;
+	FILE* lFile = readHeader(iName, 0, lPointCount);
+	fclose(lFile);
+	return lPointCount;
+};
+
+float PointCloud::readResolution(std::string iName)
+{
+	uint64_t lPointCount;
+	float lResolution;
+	FILE* lFile = readHeader(iName, 0, lPointCount, 0, 0, &lResolution);
+	fclose(lFile);
+	return lResolution;
+};
+
 FILE* PointCloud::readHeader(std::string iName, PointCloudAttributes* iAttributes, uint64_t& iSize, float* iMin, float* iMax, float* iResolution)
 {
 	std::string lName = iName + ".ply";

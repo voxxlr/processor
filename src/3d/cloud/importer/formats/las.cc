@@ -5,8 +5,8 @@
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 
-LasImporter::LasImporter(uint8_t iCoords, float iScalar, float iResolution)
-: CloudImporter(iCoords, iScalar, iResolution)
+LasImporter::LasImporter(json_spirit::mObject& iConfig)
+: CloudImporter(iConfig)
 {
 };
 
@@ -26,7 +26,7 @@ struct GeoKeys
 	pKey[8]; 
 };
 
-json_spirit::mObject LasImporter::import (std::string iName, glm::dvec3* iCenter)
+json_spirit::mObject LasImporter::import (std::string iName)
 {
 	laszip_POINTER lReader;
 	laszip_header* lHeader;
@@ -57,55 +57,51 @@ json_spirit::mObject LasImporter::import (std::string iName, glm::dvec3* iCenter
     uint8_t minClass = 255;
     uint8_t maxClass = 0;
 
-	if (!iCenter)
+	// AABB pass to find center
+	BOOST_LOG_TRIVIAL(info) << "AABB pass ";
+	laszip_seek_point(lReader, 0);
+	for(unsigned long long p=0; p < lPointCount; p++)
 	{
-		// AABB pass to find center
-		BOOST_LOG_TRIVIAL(info) << "AABB pass ";
-		laszip_seek_point(lReader, 0);
-		for(unsigned long long p=0; p < lPointCount; p++)
-		{
-			laszip_read_point(lReader);
-			double lCoords[3];
-			lCoords[0] = (lLazPoint->X)*lHeader->x_scale_factor + lHeader->x_offset;
-			lCoords[1] = (lLazPoint->Y)*lHeader->y_scale_factor + lHeader->y_offset;
-			lCoords[2] = (lLazPoint->Z)*lHeader->z_scale_factor + lHeader->z_offset;
-			convertCoords(lCoords);
+		laszip_read_point(lReader);
+		double lCoords[3];
+		lCoords[0] = (lLazPoint->X)*lHeader->x_scale_factor + lHeader->x_offset;
+		lCoords[1] = (lLazPoint->Y)*lHeader->y_scale_factor + lHeader->y_offset;
+		lCoords[2] = (lLazPoint->Z)*lHeader->z_scale_factor + lHeader->z_offset;
+		convertCoords(lCoords);
 
-            minClass = std::min(lLazPoint->classification, minClass);
-            maxClass = std::max(lLazPoint->classification, maxClass);
+        minClass = std::min(lLazPoint->classification, minClass);
+        maxClass = std::max(lLazPoint->classification, maxClass);
   
-			growMinMax(lCoords);
+		growMinMax(lCoords);
 
-			minI = std::min(lLazPoint->intensity, minI);
-			maxI = std::max(lLazPoint->intensity, maxI);
+		minI = std::min(lLazPoint->intensity, minI);
+		maxI = std::max(lLazPoint->intensity, maxI);
 
-			if (p%10000000==0)
-			{
-				BOOST_LOG_TRIVIAL(info) << p;
-			}
-
-            // REMOVE_
-           // if ((p+1)%10000000==0)
-		   // {
-          //      break;
-          //  }
-            // REMOVE_
+		if (p%10000000==0)
+		{
+			BOOST_LOG_TRIVIAL(info) << p;
 		}
 
-		mCenter[0] = (mMinD[0] + mMaxD[0])/2;
-		mCenter[1] = (mMinD[1] + mMaxD[1])/2;
-		mCenter[2] = (mMinD[2] + mMaxD[2])/2;
+        // REMOVE_
+        // if ((p+1)%10000000==0)
+		// {
+        //      break;
+        //  }
+        // REMOVE_
+	}
 
-		center(mMinD);
-		center(mMaxD);
-	}
-	else
-	{
-		mCenter[0] = (*iCenter)[0];
-		mCenter[1] = (*iCenter)[1];
-		mCenter[2] = (*iCenter)[2];
-		convertCoords(mCenter);
-	}
+	glm::dvec3 lCenter;
+	lCenter[0] = (mMinD[0] + mMaxD[0]) / 2;
+	lCenter[1] = (mMinD[1] + mMaxD[1]) / 2;
+	lCenter[2] = (mMinD[2] + mMaxD[2]) / 2;
+
+	mMinD[0] -= lCenter[0];
+	mMinD[1] -= lCenter[1];
+	mMinD[2] -= lCenter[2];
+	mMaxD[0] -= lCenter[0];
+	mMaxD[1] -= lCenter[1];
+	mMaxD[2] -= lCenter[2];
+
 
     int lClassIndex = -1;
     if (minClass != maxClass)
@@ -143,7 +139,7 @@ json_spirit::mObject LasImporter::import (std::string iName, glm::dvec3* iCenter
 
 	// main pass
 	BOOST_LOG_TRIVIAL(info) << "Main pass ";
-	FILE* lOutputFile = PointCloud::writeHeader("cloud", lAttributes, 0, 0, 0, mResolution);
+	FILE* lOutputFile = PointCloud::writeHeader("cloud", lAttributes);
 	laszip_seek_point(lReader, 0);
 	for(unsigned long p=0; p < lPointCount; p++)
 	{
@@ -153,12 +149,10 @@ json_spirit::mObject LasImporter::import (std::string iName, glm::dvec3* iCenter
 		lCoords[1] = (lLazPoint->Y)*lHeader->y_scale_factor + lHeader->y_offset;
 		lCoords[2] = (lLazPoint->Z)*lHeader->z_scale_factor + lHeader->z_offset;
 		convertCoords(lCoords);
-
-		center(lCoords);
-		if (iCenter)
-		{
-			growMinMax(lCoords);
-		}
+		lCoords[0] -= lCenter[0];
+		lCoords[1] -= lCenter[1];
+		lCoords[2] -= lCenter[2];
+		growMinMax(lCoords);
 
 		lPoint.position[0] = (float)lCoords[0];
 		lPoint.position[1] = (float)lCoords[1];
@@ -209,7 +203,6 @@ json_spirit::mObject LasImporter::import (std::string iName, glm::dvec3* iCenter
 	PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
 	fclose(lOutputFile);
 	laszip_close_reader(lReader);
-
 
 	done();
 

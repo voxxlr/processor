@@ -2,6 +2,7 @@
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/filesystem.hpp>
 
 static const uint8_t ASCII = 1;
 static const uint8_t BINARY_LITTLE_ENDIAN = 2;
@@ -345,20 +346,18 @@ void readPlyPoint(Point& iPoint, FILE* iFile, uint32_t iFormat, PropertyReader**
 };
 
 
-PlyImporter::PlyImporter(uint8_t iCoords, float iScalar, float iResolution)
-: CloudImporter(iCoords, iScalar, iResolution)
+PlyImporter::PlyImporter(json_spirit::mObject& iConfig)
+: CloudImporter(iConfig)
 {
 };
 
 
-json_spirit::mObject PlyImporter::import (std::string iName, glm::dvec3* iCenter)
+json_spirit::mObject PlyImporter::import (json_spirit::mArray iFiles, std::string iOutput)
 {
-	FILE* lInputFile = fopen(iName.c_str(),"rb");
-	
-	//setvbuf (InputFile, NULL, _IOFBF, BUFFER_SIZE);
+	FILE* lInputFile = fopen(iFiles[0].get_str().c_str(),"rb");
 
 	char lLine[1024];
-    size_t lLength = 0;
+	size_t lLength = 0;
 	fgets(lLine, 256, lInputFile); 
 	lLine[strlen(lLine)-1] = 0x00;
 
@@ -368,8 +367,6 @@ json_spirit::mObject PlyImporter::import (std::string iName, glm::dvec3* iCenter
 
 	uint32_t lFormat = 0;
 	uint32_t lIndex = 0;
-	uint32_t lDatastart = 0;
-	unsigned long lPointCount = 0;
 	bool lVertexElement = false;
 	while (fgets(lLine,1024,lInputFile)) 
 	{
@@ -448,7 +445,6 @@ json_spirit::mObject PlyImporter::import (std::string iName, glm::dvec3* iCenter
 			if (!strcmp(lBuffer[1], "vertex"))
 			{
 				lVertexElement = true;
-				sscanf(lBuffer[2], "%lu", &lPointCount);
 			}
 			else
 			{
@@ -459,40 +455,10 @@ json_spirit::mObject PlyImporter::import (std::string iName, glm::dvec3* iCenter
 		{
 			break;
 		}
-    }
-	lDatastart = ftell(lInputFile);
+	}
+	fclose(lInputFile);
 
-	BOOST_LOG_TRIVIAL(info) << iName << " contains " << lPointCount << " points ";
 	Point lPoint(lAttributes);
-
-	// aabb pass
-	if (!iCenter)
-	{
-		double lCoord[3];
-		fseek(lInputFile, lDatastart, SEEK_SET);
-		for(unsigned long p=0; p < lPointCount; p++)
-		{
-			readPlyPoint(lPoint, lInputFile, lFormat, lFields, lIndex);
-			convertCoords(lPoint.position);
-			growMinMax(lPoint.position);
-		}
-
-		mCenter[0] = (mMinD[0] + mMaxD[0])/2;
-		mCenter[1] = (mMinD[1] + mMaxD[1])/2;
-		mCenter[2] = (mMinD[2] + mMaxD[2])/2;
-
-		center(mMinD);
-		center(mMaxD);
-	}
-	else
-	{
-		mCenter[0] = (*iCenter)[0];
-		mCenter[1] = (*iCenter)[1];
-		mCenter[2] = (*iCenter)[2];
-		convertCoords(mCenter);
-	}
-
-
 
 	ColorType* lColor = 0;
 	int lColorIndex = lAttributes.getAttributeIndex(Attribute::COLOR);
@@ -500,29 +466,56 @@ json_spirit::mObject PlyImporter::import (std::string iName, glm::dvec3* iCenter
 	{
 		lColor = (ColorType*)lPoint.getAttribute(lColorIndex);
 	}
+	unsigned long lTotalPoints = 0;
+	
+	boost::filesystem::path lPath(iOutput);
+	FILE* lOutputFile = PointCloud::writeHeader(lPath.stem().string(), lAttributes);
 
-	// write pass
-	FILE* lOutputFile = PointCloud::writeHeader("cloud", lAttributes, 0, 0, 0, mResolution);
-	fseek(lInputFile, lDatastart, SEEK_SET);
-	for(unsigned long p=0; p < lPointCount; p++)
+	for (int i=0; i<iFiles.size(); i++)
 	{
-		readPlyPoint(lPoint, lInputFile, lFormat, lFields, lIndex);
-		convertCoords(lPoint.position);
-		
-		center(lPoint.position);
-		if (iCenter)
+		FILE* lInputFile = fopen(iFiles[i].get_str().c_str(),"rb");
+
+		unsigned long lPointCount = 0;
+		char lLine[1024];
+		while (fgets(lLine,1024,lInputFile)) 
 		{
-			growMinMax(lPoint.position);
+			char lBuffer[4][64];
+			//std::cout << lLine << "\n";
+			sscanf(lLine, "%s %s %s", (char*)&lBuffer[0], (char*)&lBuffer[1], (char*)&lBuffer[2]);
+
+			if (!strcmp(lBuffer[1], "vertex"))
+			{
+				sscanf(lBuffer[2], "%lu", &lPointCount);
+			}
+			else if (!strncmp(lLine, "end_header", 10))
+			{
+				break;
+			}
 		}
 
-		lPoint.write(lOutputFile);
+		BOOST_LOG_TRIVIAL(info) << iFiles[i].get_str() << " contains " << lPointCount << " points ";
+		for(unsigned long p=0; p < lPointCount; p++)
+		{
+			readPlyPoint(lPoint, lInputFile, lFormat, lFields, lIndex);
+
+			glm::dvec4 lPosition = mTransform*glm::dvec4(lPoint.position[0], lPoint.position[1], lPoint.position[2], 1.0);
+			lPoint.position[0] = lPosition[0];
+			lPoint.position[1] = lPosition[1];
+			lPoint.position[2] = lPosition[2];
+
+			convertCoords(lPoint.position); 
+			growMinMax(lPoint.position);
+
+			lPoint.write(lOutputFile);
+		}
+		fclose(lInputFile);
+
+		lTotalPoints += lPointCount;
 	}
 
-	PointCloud::updateSize(lOutputFile, lPointCount);
+	PointCloud::updateSize(lOutputFile, lTotalPoints);
 	PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
 	fclose(lOutputFile); 
-
-	fclose(lInputFile);
 
 	return getMeta(0);
 }

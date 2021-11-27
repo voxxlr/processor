@@ -12,8 +12,14 @@
 #include <algorithm>
 #include <math.h>
 
+#if defined (__linux__)
+	#include <sys/stat.h>
+	#include <sys/types.h>
+#endif
+
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/filesystem.hpp>
 
 #include "packetProcessor.h"
 
@@ -32,6 +38,11 @@ void PacketProcessor::initTraveral(PointCloudAttributes& iAttributes)
 {
 	InorderOperation::initTraveral(iAttributes);
 
+	if (!boost::filesystem::exists("./root"))
+	{
+		boost::filesystem::create_directory("./root");
+	}
+
 #if defined PACKED_NORMAL
 	PackedNormalType lAttribute;
 #else
@@ -39,6 +50,19 @@ void PacketProcessor::initTraveral(PointCloudAttributes& iAttributes)
 #endif	
 
 	iAttributes.createAttribute(Attribute::NORMAL, lAttribute);
+}
+
+void PacketProcessor::completeTraveral(PointCloudAttributes& iAttributes)
+{
+	// write root
+	std::ofstream lStream("root.json");
+	json_spirit::write_stream(json_spirit::mValue(mRootInfo), lStream);
+	lStream.close();
+	/*
+	#if defined (__linux__)
+		chmod("./root.json", 0777);
+	#endif	
+	*/
 }
 
 void PacketProcessor::computeNormals(PointCloud& iPoints, uint32_t iNormalIndex)

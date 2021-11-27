@@ -24,72 +24,45 @@
 #include "formats/ply.h"
 #include "formats/e57.h"
 #include "formats/las.h"
-#include "formats/pts.h"
 #include "formats/ptx.h"
+#include "formats/pts.h"
+  
 
-
-
-bool processFile(json_spirit::mObject& iObject)
+bool processFile(json_spirit::mObject& iConfig)
 {
-	uint8_t lCoords = CloudImporter::RIGHT_Z_UP;
-	if (iObject.find("coords") != iObject.end())
-	{
-		lCoords = CloudImporter::toCoords(iObject["coords"].get_str());
-	}
-
-	float lScalar = 1.0;
-	if (iObject.find("scalar") != iObject.end())
-	{
-		lScalar = iObject["scalar"].get_real();
-	}
-
-	glm::dvec3* lCenter = 0;
-	if (iObject.find("center") != iObject.end())
-	{
-		lCenter = new glm::dvec3(0.0);
-		json_spirit::mArray lArray = iObject["center"].get_array();
-		(*lCenter)[0] = lArray[0].get_real();
-		(*lCenter)[1] = lArray[1].get_real();
-		(*lCenter)[2] = lArray[2].get_real();
-	};
-
-	float lResolution = 0;
-	if (iObject.find("resolution") != iObject.end())
-	{
-		if (!iObject["resolution"].is_null())
-		{
-			lResolution = iObject["resolution"].get_real();
-		}
-	}
-
-	std::string lFile = iObject["file"].get_str();
-	std::string lType = boost::filesystem::extension(lFile);
-
+	json_spirit::mArray lFiles = iConfig["file"].get_array();
 	json_spirit::mObject lProperties;
-	if (lType == ".las" || lType == ".laz" || lType == ".LAS" || lType == ".LAZ")
+
+	std::string lType = boost::filesystem::extension(lFiles[0].get_str());
+	if (lType == ".e57")
 	{
-		LasImporter lImporter(lCoords, lScalar, lResolution);
-		lProperties = lImporter.import(lFile, lCenter);
+		E57Importer lImporter(iConfig);
+		lProperties = lImporter.import(lFiles[0].get_str()); // only one supported
+	}
+	else if (lType == ".las" || lType == ".laz" || lType == ".LAS" || lType == ".LAZ")
+	{
+		LasImporter lImporter(iConfig);
+		lProperties = lImporter.import(lFiles[0].get_str());
 	}
 	else if (lType == ".e57")
 	{
-		E57Importer lImporter(lCoords, lScalar, lResolution);
-		lProperties = lImporter.import(lFile, lCenter);
+		E57Importer lImporter(iConfig);
+		lProperties = lImporter.import(lFiles[0].get_str());
 	}
 	else if (lType == ".pts")
 	{
-		PtsImporter lImporter(lCoords, lScalar, lResolution);
-		lProperties = lImporter.import(lFile, lCenter);
+		PtsImporter lImporter(iConfig);
+		lProperties = lImporter.import(lFiles[0].get_str());
 	}
 	else if (lType == ".ptx")
 	{
-		PtxImporter lImporter(lCoords, lScalar, lResolution);
-		lProperties = lImporter.import(lFile, lCenter);
+		PtxImporter lImporter(iConfig);
+		lProperties = lImporter.import(lFiles[0].get_str());
 	}
-	else if (lType == ".ply")
+	else if (lType == ".ply")  /* this can only be used internally */
 	{
-		PlyImporter lImporter(lCoords, lScalar, lResolution);
-		lProperties = lImporter.import(lFile, lCenter);
+		PlyImporter lImporter(iConfig);
+		lProperties = lImporter.import(lFiles, iConfig["output"].get_str());
 	}
 
 	std::ifstream lStream("meta.json");
@@ -98,16 +71,17 @@ bool processFile(json_spirit::mObject& iObject)
 	lStream.close();
 
 	json_spirit::mObject& lMeta = lValue.get_obj();
-    for (auto lIter = lProperties.begin(); lIter != lProperties.end(); lIter++)
-    {
-    	lMeta[lIter->first] = lIter->second;
-    }
+	for (auto lIter = lProperties.begin(); lIter != lProperties.end(); lIter++)
+	{
+		lMeta[lIter->first] = lIter->second;
+	}
 
 	// write meta
 	std::ofstream lOstream("meta.json");
 	json_spirit::write_stream(lValue, lOstream);
 	lOstream.close();
 
+	json_spirit::write_stream(json_spirit::mValue(lProperties), std::cout);
 	return true;
 };
 

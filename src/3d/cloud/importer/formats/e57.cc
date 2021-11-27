@@ -6,6 +6,8 @@
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/regex.hpp>
 
 #if defined(WIN32)
 #include <Windows.h>
@@ -89,15 +91,14 @@ struct E57
 		iReader.ReadData3D(iIndex, mHeader);
 		iReader.GetData3DSizes(iIndex, nSize, nColumn, nPointsSize, nGroupsSize, nCountSize, bColumnIndex);
 
-		/*
-		glm::quat lQuat = glm::quat(mHeader.pose.rotation.w, mHeader.pose.rotation.x, mHeader.pose.rotation.y, mHeader.pose.rotation.z);
-		glm::vec3 lAxis = glm::axis(lQuat);
-		std::cout << "AXI: " << lAxis.x << " " <<lAxis.y << " " << lAxis.z << "   " << glm::angle(lQuat) << "\n";
-		std::cout << "TRS: " << mHeader.pose.translation.x << " " <<mHeader.pose.translation.y << " " << mHeader.pose.translation.z <<"\n";
-		*/
-		glm::dmat4 lRotationMatrix = glm::mat4_cast(glm::dquat(mHeader.pose.rotation.w, mHeader.pose.rotation.x, mHeader.pose.rotation.y, mHeader.pose.rotation.z));
-		glm::dmat4 lTranslationMatrix = glm::translate(glm::dmat4(1.0f), glm::dvec3(mHeader.pose.translation.x, mHeader.pose.translation.y, mHeader.pose.translation.z));
-		mWorldPose = lTranslationMatrix * lRotationMatrix;
+		mWorldPose = glm::mat4_cast(glm::dquat(mHeader.pose.rotation.w, mHeader.pose.rotation.x, mHeader.pose.rotation.y, mHeader.pose.rotation.z));
+		mWorldPose[3][0] = mHeader.pose.translation.x;
+		mWorldPose[3][1] = mHeader.pose.translation.y;
+		mWorldPose[3][2] = mHeader.pose.translation.z;
+		BOOST_LOG_TRIVIAL(info) << "ST: " << mWorldPose[0][0] << " " << mWorldPose[0][1] << " " << mWorldPose[0][2] << " " << mWorldPose[0][3];
+		BOOST_LOG_TRIVIAL(info) << "    " << mWorldPose[1][0] << " " << mWorldPose[1][1] << " " << mWorldPose[1][2] << " " << mWorldPose[1][3];
+		BOOST_LOG_TRIVIAL(info) << "    " << mWorldPose[2][0] << " " << mWorldPose[2][1] << " " << mWorldPose[2][2] << " " << mWorldPose[2][3];
+		BOOST_LOG_TRIVIAL(info) << "    " << mWorldPose[3][0] << " " << mWorldPose[3][1] << " " << mWorldPose[3][2] << " " << mWorldPose[3][3];
 
 		if (nSize == 0) nSize = 1024;
 
@@ -166,13 +167,13 @@ struct E57
 		if(blueData) delete blueData;
 	}
 
-	unsigned long read(Point& iPoint, e57::Reader& iReader, FILE* iOutputFile, CloudImporter& iImporter)
+	unsigned long read(Point& iPoint, e57::Reader& iReader, FILE* iOutputFile, CloudImporter& iImporter, float iRadius2)
 	{
 		e57::CompressedVectorReader lReader = start(iReader);
 
 		unsigned long lPointCount = 0;
-
 		unsigned size = 0;
+		glm::mat4 lWorkdMatrix = iImporter.mTransform*mWorldPose;
 		while (size = lReader.read())
 		{
 			for (unsigned long i = 0; i < size; i++)
@@ -180,9 +181,9 @@ struct E57
 				if (!isInvalidData || !isInvalidData[i])
 				{
 					glm::dvec4 lScanPosition = glm::dvec4(xData[i], yData[i], zData[i], 1.0);
-					//if (lScanPosition.x*lScanPosition.x + lScanPosition.y*lScanPosition.y + lScanPosition.z*lScanPosition.z < iCutoff2)
+					if (lScanPosition.x*lScanPosition.x + lScanPosition.y*lScanPosition.y + lScanPosition.z*lScanPosition.z < iRadius2)
 					{
-						glm::dvec4 lWorldPostion = mWorldPose*lScanPosition;
+						glm::dvec4 lWorldPostion = lWorkdMatrix*lScanPosition;
 						iImporter.convertCoords(&lWorldPostion[0]);
 						iImporter.growMinMax(&lWorldPostion[0]);
 
@@ -252,98 +253,109 @@ struct E57
 
 
 
+#undef max
 
-
-E57Importer::E57Importer(uint8_t iCoords, float iScalar, float iResolution)
-: CloudImporter(iCoords, iScalar, iResolution)
+E57Importer::E57Importer(json_spirit::mObject& iConfig)
+: CloudImporter(iConfig)
+, mRadius2(std::numeric_limits<int>::max())
 {
-};
-
-
-json_spirit::mObject E57Importer::import (std::string iName, glm::dvec3* iCenter)
-{
-	uint64_t lPointCount = 0;
-	FILE* lOutputFile = 0;
-	PointCloudAttributes lAttributes;
-
-    try
-    {
-		e57::Reader eReader(iName);
-		e57::E57Root rootHeader;
-		eReader.GetE57Root(rootHeader);
-
-		std::vector<E57*> lList;
-		int32_t lScanCount = eReader.GetData3DCount();
-		for (int32_t i=0; i<lScanCount; i++)
-		{
-			E57* lScan = new E57(eReader, i);
-			lList.push_back(lScan);
-			if (lScan->bColor)
-			{
-				lScan->mColorAttribute = lAttributes.createAttribute(Attribute::COLOR, COLOR_TEMPLATE);
-			}
-			if (lScan->bIntensity)
-			{
-				lScan->mIntensityAttribute = lAttributes.createAttribute(Attribute::INTENSITY, INTENSITY_TEMPLATE);
-			}
-
-			if (!iCenter)
-			{
-				mCenter[0] += lScan->mWorldPose[3][0];
-				mCenter[1] += lScan->mWorldPose[3][1];
-				mCenter[2] += lScan->mWorldPose[3][2];
-			}
-			lPointCount += lScan->nPointsSize;
-		}
-
-		if (!iCenter)
-		{
-			mCenter[0] /= lScanCount;
-			mCenter[1] /= lScanCount;
-			mCenter[2] /= lScanCount;
-		}
-		else
-		{
-			mCenter[0] = (*iCenter)[0];
-			mCenter[1] = (*iCenter)[1];
-			mCenter[2] = (*iCenter)[2];
-		}
-
-		for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
-		{
-			 (*lIter)->mWorldPose[3][0] -= mCenter[0];
-			 (*lIter)->mWorldPose[3][1] -= mCenter[1];
-			 (*lIter)->mWorldPose[3][2] -= mCenter[2];
-		}
-		convertCoords(mCenter);
-	
-		// write ply
-		//std::cout << " BEFORE " << lPointCount << "\n";
-		Point lPoint(lAttributes);
-		lOutputFile = PointCloud::writeHeader("cloud", lAttributes,0,0,0,mResolution);
-		lPointCount = 0;
-
-		for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
-		{
-			BOOST_LOG_TRIVIAL(info) << "File - " << (*lIter)->mHeader.name << "  :   " << (*lIter)->nPointsSize;
-			lPointCount += (*lIter)->read(lPoint, eReader, lOutputFile, *this);
-		}
-
-	} catch (e57::E57Exception& ex) {
-		BOOST_LOG_TRIVIAL(info) << "Got an e57::E57Exception, what=" << ex.what() << " file " << ex.sourceFileName() << " line " << ex.sourceLineNumber() <<  " context " << ex.context() << endl;
-	} catch (std::exception& ex) {
-		BOOST_LOG_TRIVIAL(info) << "Got an std::exception, what=" << ex.what() << endl;
-	} catch (...) {
-		BOOST_LOG_TRIVIAL(info) << "Got an unknown exception" << endl;
+	if (iConfig.find("separate") == iConfig.end())
+	{
+		iConfig["separate"] = false;
 	}
 
-	//std::cout << " AFTER " << lPointCount << "\n";
-	if (lOutputFile)
+	if (iConfig.find("radius") != iConfig.end())
 	{
+		mRadius2 = mConfig["radius"].get_real()*mConfig["radius"].get_real();
+	};
+
+	if (iConfig.find("filter") != iConfig.end())
+	{
+	//	mFilter = boost::regex(mConfig["filter"].get_str().c_str());
+	};
+};
+
+bool E57Importer::filtered(std::string iName)
+{
+	if (mConfig.find("filter") != mConfig.end())
+	{
+		BOOST_LOG_TRIVIAL(info) << iName <<  "  :   " << mConfig["filter"].get_str().c_str();
+
+		boost::regex lFilter(mConfig["filter"].get_str().c_str()); 
+
+		return !boost::regex_search(iName, lFilter);
+	};
+	return false;
+}
+
+json_spirit::mObject E57Importer::import (std::string iName)
+{
+	e57::Reader eReader(iName);
+	e57::E57Root rootHeader;
+	eReader.GetE57Root(rootHeader);
+
+	std::vector<E57*> lList;
+	PointCloudAttributes lAttributes;
+	for (int32_t i=0; i<eReader.GetData3DCount(); i++)
+	{
+		E57* lScan = new E57(eReader, i);
+		lList.push_back(lScan);
+		if (lScan->bColor)
+		{
+			lScan->mColorAttribute = lAttributes.createAttribute(Attribute::COLOR, COLOR_TEMPLATE);
+		}
+		if (lScan->bIntensity)
+		{
+			lScan->mIntensityAttribute = lAttributes.createAttribute(Attribute::INTENSITY, INTENSITY_TEMPLATE);
+		}
+	}
+
+	json_spirit::mArray lArray;
+
+	// write ply
+	Point lPoint(lAttributes);
+	if (mConfig["separate"].get_bool())
+	{
+		for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
+		{
+			std::string lName((*lIter)->mHeader.name);
+			if (!filtered(lName))
+			{
+				FILE* lOutputFile = PointCloud::writeHeader((*lIter)->mHeader.name, lAttributes,0);
+				BOOST_LOG_TRIVIAL(info) << "File - " << (*lIter)->mHeader.name << "  :   " << (*lIter)->nPointsSize;
+
+				uint64_t lPointCount = (*lIter)->read(lPoint, eReader, lOutputFile, *this, mRadius2);
+				PointCloud::updateSize(lOutputFile, lPointCount);
+				PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
+				fclose(lOutputFile);
+				lArray.push_back((*lIter)->mHeader.name);
+			}
+		}
+	}
+	else
+	{
+		boost::filesystem::path lPath(iName);
+
+		FILE* lOutputFile = PointCloud::writeHeader(lPath.stem().string(), lAttributes, 0, 0, 0);
+		uint64_t lPointCount = 0;
+
+		lArray.push_back(lPath.stem().string());
+		for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
+		{
+			std::string lName((*lIter)->mHeader.name);
+			if (!filtered(lName))
+			{
+				BOOST_LOG_TRIVIAL(info) << "File - " << (*lIter)->mHeader.name << "  :   " << (*lIter)->nPointsSize;
+				lPointCount += (*lIter)->read(lPoint, eReader, lOutputFile, *this, mRadius2);
+			}
+		}
+
 		PointCloud::updateSize(lOutputFile, lPointCount);
 		PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
 		fclose(lOutputFile);
 	}
 
-	return getMeta(0);
+    json_spirit::mObject lMeta = getMeta(0);
+	lMeta["files"] = lArray;
+	return lMeta;
 }

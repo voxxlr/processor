@@ -94,12 +94,10 @@ class KdFileTree
 		void construct(std::string iName, uint32_t iLeafsize, float iOverlap);
 		void load(std::string iName);
 
-		uint64_t collapse(std::string iName);
+		uint64_t collapse(std::string iName, float iResolution);
 		void remove();
 
-		json_spirit::mArray fill(float iSigma = SIGMA);
-
-		float mResolution;
+		json_spirit::mArray fill(float iSigma, float iResolution);
 
 		operator PointCloudAttributes& ()
 		{
