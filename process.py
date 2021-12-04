@@ -65,6 +65,32 @@ source = config["meta"]["source"];
 
 if config["type"] == 1: #"cloud"
 
+    response = runVoxxlr("cloud/importer", 
+        {
+        "file": [source["files"][0]["name"]],
+        #"radius": 10,
+        "coords": config["coords"] if "coords" in config else "right-z",
+        "scalar": config["scalar"] if "scalar" in config else 1,
+        #"separate": True
+        })
+
+    dataset = response["files"][0]
+
+    #apply average filter
+    if not "resolution" in config:
+        resolution = runVoxxlr("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
+    else:
+        resolution = config["resolution"]
+ 
+    runVoxxlr("cloud/filter",
+            { 
+            "resolution": resolution,
+            "file": f'./{dataset}'
+            })
+
+    runVoxxlr("cloud/packetizer", {  "file": f'./{dataset}' })
+
+    '''
     runVoxxlr("cloud/importer", { 
                 "file": source["files"][0]["name"],
                 "coords": config["coords"] if "coords" in config else "right-z",
@@ -79,6 +105,7 @@ if config["type"] == 1: #"cloud"
     runVoxxlr("cloud/filter", {  "density": config["density"] if "density" in config else None })
  
     runVoxxlr("cloud/packetizer", { })
+    '''
 
 elif config["type"] == 2:#"map"
 

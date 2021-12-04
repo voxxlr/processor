@@ -14,6 +14,7 @@
 #include "json_spirit_error_position.h"
 
 #define BOOST_SPIRIT_THREADSAFE  // uncomment for multithreaded use, requires linking to boost.thread
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
