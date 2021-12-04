@@ -50,9 +50,11 @@ def runVoxxlr(name,args):
     logF.write(name+" \""+json.dumps(args).replace('"','\\"')+"\"\n")
     #logF.write(json.dumps(args,sort_keys=True,indent=4)+"\n")
     #process = subprocess.Popen([name,json.dumps(args)], stdout=logF, stderr=logF, shell=True)
-    process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=logF, stderr=logF, shell=True,cwd=".")
-    stdout, stderr = process.communicate()
+    process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=subprocess.PIPE, stderr=logF, shell=True,cwd=".")
+    response, error = process.communicate()
     process.wait()
+    return json.loads(response.decode('utf-8'))
+
 
 # pocess dataset
 with open("meta.json", "w") as meta:
