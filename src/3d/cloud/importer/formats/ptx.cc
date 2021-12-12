@@ -2,6 +2,7 @@
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/filesystem.hpp>
 
 PtxImporter::PtxImporter(json_spirit::mObject& iConfig)
 : CloudImporter(iConfig)
@@ -77,158 +78,158 @@ uint64_t PtxImporter::readHeader(FILE* iFile, char* iLine, glm::dmat4& iMatrix)
 json_spirit::mObject PtxImporter::import(std::string iName)
 {
 	uint64_t lTotalCount = 0;
-    try
-    {
-		PointCloudAttributes lAttributes;
+   
+	PointCloudAttributes lAttributes;
 
-		FILE* lInputFile = fopen(iName.c_str(),"rb");
-		glm::dmat4 lMatrix(1.0);
-		char lLine[1024];
-		// determine attributes
-		fgets(lLine,1024, lInputFile);
-		uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
-		fgets(lLine,1024, lInputFile);
-		float lCoords[3];
-		float lIntensity;
-		char lColor[3];
-		switch (sscanf(lLine, "%f %f %f %f %hhu %hhu %hhu", lCoords+0, lCoords+1, lCoords+2, &lIntensity, lColor+0, lColor+1, lColor+2))
-		{
-			case 4: 
-				lAttributes.createAttribute(Attribute::INTENSITY, INTENSITY_TEMPLATE);
-				break;
-			case 7: 
-				lAttributes.createAttribute(Attribute::COLOR, COLOR_TEMPLATE);
-				lAttributes.createAttribute(Attribute::INTENSITY, INTENSITY_TEMPLATE);
-				break;
-		};
+	FILE* lInputFile = fopen(iName.c_str(),"rb");
+	glm::dmat4 lMatrix(1.0);
+	char lLine[1024];
+	// determine attributes
+	fgets(lLine,1024, lInputFile);
+	uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
+	fgets(lLine,1024, lInputFile);
+	float lCoords[3];
+	float lIntensity;
+	char lColor[3];
+	switch (sscanf(lLine, "%f %f %f %f %hhu %hhu %hhu", lCoords+0, lCoords+1, lCoords+2, &lIntensity, lColor+0, lColor+1, lColor+2))
+	{
+		case 4: 
+			lAttributes.createAttribute(Attribute::INTENSITY, INTENSITY_TEMPLATE);
+			break;
+		case 7: 
+			lAttributes.createAttribute(Attribute::COLOR, COLOR_TEMPLATE);
+			lAttributes.createAttribute(Attribute::INTENSITY, INTENSITY_TEMPLATE);
+			break;
+	};
 
-		int lIntensityIndex = lAttributes.getAttributeIndex(Attribute::INTENSITY);
-		int lColorIndex = lAttributes.getAttributeIndex(Attribute::COLOR);
+	int lIntensityIndex = lAttributes.getAttributeIndex(Attribute::INTENSITY);
+	int lColorIndex = lAttributes.getAttributeIndex(Attribute::COLOR);
 
-		// AABB pass
-		BOOST_LOG_TRIVIAL(info) << "AABB pass  ";
-		fseek(lInputFile, 0, SEEK_SET);
-		while (fgets(lLine, 256, lInputFile))
-		{
-			glm::dvec4 lCoords;
+	// AABB pass
+	BOOST_LOG_TRIVIAL(info) << "AABB pass  ";
+	fseek(lInputFile, 0, SEEK_SET);
+	while (fgets(lLine, 256, lInputFile))
+	{
+		glm::dvec4 lCoords;
 		
-			lCoords[3] = 1;
-			uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
-			for (uint64_t i=0; i<lPointCount; i++)
-			{
-				if (fgets(lLine,1024,lInputFile)) 
-				{
-					double lX, lY, lZ;
-					//sscanf(lLine, "%lf %lf %lf", &lCoords[0], &lCoords[1], &lCoords[2]);
-					sscanf(lLine, "%lf %lf %lf", &lX, &lY, &lZ);
-					if (lX != 0 && lY != 0 && lZ != 0)
-					{
-						lCoords[0] = lX;
-						lCoords[1] = lY;
-						lCoords[2] = lZ;
-						lCoords= lMatrix*lCoords;
-						convertCoords(&lCoords[0]);
-						growMinMax(&lCoords[0]);
-					}
-				}
-
-				if (i%10000000 == 0)
-				{
-					BOOST_LOG_TRIVIAL(info) << "AABB pass at " << i << " points";
-				}
-			}
-		}
-
-		glm::dvec3 lCenter;
-		lCenter[0] = (mMinD[0] + mMaxD[0]) / 2;
-		lCenter[1] = (mMinD[1] + mMaxD[1]) / 2;
-		lCenter[2] = (mMinD[2] + mMaxD[2]) / 2;
-
-		mMinD[0] -= lCenter[0];
-		mMinD[1] -= lCenter[1];
-		mMinD[2] -= lCenter[2];
-		mMaxD[0] -= lCenter[0];
-		mMaxD[1] -= lCenter[1];
-		mMaxD[2] -= lCenter[2];
-
-		BOOST_LOG_TRIVIAL(info) << "Main pass";
-
-		// Main pass		
-		Point lPoint(lAttributes);
-
-		FILE* lOutputFile = PointCloud::writeHeader("cloud", lAttributes);
-		IntensityType* lIntensityAttribute = (IntensityType*)lPoint.getAttribute(lIntensityIndex);
-		ColorType* lColorAttribute = (ColorType*)lPoint.getAttribute(lColorIndex);
-
-		BOOST_LOG_TRIVIAL(info) << "AABB pass";
-		fseek(lInputFile, 0, SEEK_SET);
-		while (fgets(lLine, 256, lInputFile))
+		lCoords[3] = 1;
+		uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
+		for (uint64_t i=0; i<lPointCount; i++)
 		{
-			glm::dvec4 lCoords;
-			lCoords[3] = 1;
-			uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
-			for (uint64_t i=0; i<lPointCount; i++)
+			if (fgets(lLine,1024,lInputFile)) 
 			{
-				if (fgets(lLine,1024,lInputFile)) 
+				double lX, lY, lZ;
+				//sscanf(lLine, "%lf %lf %lf", &lCoords[0], &lCoords[1], &lCoords[2]);
+				sscanf(lLine, "%lf %lf %lf", &lX, &lY, &lZ);
+				if (lX != 0 && lY != 0 && lZ != 0)
 				{
-					float lIntensity;
-					char lColor[3];
-					double lX, lY, lZ;
-
-					if (lColorIndex != -1)
-					{
-						sscanf(lLine, "%lf %lf %lf %f %hhu %hhu %hhu", &lX, &lY, &lZ, &lIntensity, lColor+0, lColor+1, lColor+2);
-					}
-					else
-					{
-						sscanf(lLine, "%lf %lf %lf %f", &lX, &lY, &lZ, &lIntensity);
-					}
-
-					if (lX != 0 && lY != 0 && lZ != 0)
-					{
-						lCoords[0] = lX;
-						lCoords[1] = lY;
-						lCoords[2] = lZ;
-						lCoords = lMatrix*lCoords;
-						convertCoords(&lCoords[0]);
-						lCoords[0] -= lCenter[0];
-						lCoords[1] -= lCenter[1];
-						lCoords[2] -= lCenter[2];
-
-						// assign to point
-						if (lIntensityAttribute)
-						{
-							lIntensityAttribute->mValue = lIntensity*USHRT_MAX;
-						}
-						if (lColorAttribute)
-						{
-							memcpy(lColorAttribute->mValue, lColor, sizeof(lColor));
-						}
-						lPoint.position[0] = lCoords[0];
-						lPoint.position[1] = lCoords[1];
-						lPoint.position[2] = lCoords[2];
-						lPoint.write(lOutputFile);
-						lTotalCount ++;
-					}
-				}
-
-				if (i%10000000 == 0)
-				{
-					BOOST_LOG_TRIVIAL(info) << "Main pass at " << i << " points";
+					lCoords[0] = lX;
+					lCoords[1] = lY;
+					lCoords[2] = lZ;
+					lCoords= lMatrix*lCoords;
+					convertCoords(&lCoords[0]);
+					growMinMax(&lCoords[0]);
 				}
 			}
+
+			if (i%10000000 == 0)
+			{
+				BOOST_LOG_TRIVIAL(info) << "AABB pass at " << i << " points";
+			}
 		}
-
-		PointCloud::updateSize(lOutputFile, lTotalCount);
-		PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
-		fclose(lOutputFile);
-		fclose(lInputFile);
-
-	} catch (...) {
-		BOOST_LOG_TRIVIAL(info) << "Got an unknown exception";
 	}
 
-	return getMeta(0);
+	glm::dvec3 lCenter;
+	lCenter[0] = (mMinD[0] + mMaxD[0]) / 2;
+	lCenter[1] = (mMinD[1] + mMaxD[1]) / 2;
+	lCenter[2] = (mMinD[2] + mMaxD[2]) / 2;
+
+	mMinD[0] -= lCenter[0];
+	mMinD[1] -= lCenter[1];
+	mMinD[2] -= lCenter[2];
+	mMaxD[0] -= lCenter[0];
+	mMaxD[1] -= lCenter[1];
+	mMaxD[2] -= lCenter[2];
+
+	BOOST_LOG_TRIVIAL(info) << "Main pass";
+	boost::filesystem::path lPath(iName);
+	json_spirit::mArray lArray;
+	lArray.push_back(lPath.stem().string());
+
+	// Main pass		
+	Point lPoint(lAttributes);
+
+	FILE* lOutputFile = PointCloud::writeHeader(lPath.stem().string(), lAttributes);
+	IntensityType* lIntensityAttribute = (IntensityType*)lPoint.getAttribute(lIntensityIndex);
+	ColorType* lColorAttribute = (ColorType*)lPoint.getAttribute(lColorIndex);
+
+	BOOST_LOG_TRIVIAL(info) << "AABB pass";
+	fseek(lInputFile, 0, SEEK_SET);
+	while (fgets(lLine, 256, lInputFile))
+	{
+		glm::dvec4 lCoords;
+		lCoords[3] = 1;
+		uint64_t lPointCount = readHeader(lInputFile, lLine, lMatrix);
+		for (uint64_t i=0; i<lPointCount; i++)
+		{
+			if (fgets(lLine,1024,lInputFile)) 
+			{
+				float lIntensity;
+				char lColor[3];
+				double lX, lY, lZ;
+
+				if (lColorIndex != -1)
+				{
+					sscanf(lLine, "%lf %lf %lf %f %hhu %hhu %hhu", &lX, &lY, &lZ, &lIntensity, lColor+0, lColor+1, lColor+2);
+				}
+				else
+				{
+					sscanf(lLine, "%lf %lf %lf %f", &lX, &lY, &lZ, &lIntensity);
+				}
+
+				if (lX != 0 && lY != 0 && lZ != 0)
+				{
+					lCoords[0] = lX;
+					lCoords[1] = lY;
+					lCoords[2] = lZ;
+					lCoords = lMatrix*lCoords;
+					convertCoords(&lCoords[0]);
+					lCoords[0] -= lCenter[0];
+					lCoords[1] -= lCenter[1];
+					lCoords[2] -= lCenter[2];
+
+					// assign to point
+					if (lIntensityAttribute)
+					{
+						lIntensityAttribute->mValue = lIntensity*USHRT_MAX;
+					}
+					if (lColorAttribute)
+					{
+						memcpy(lColorAttribute->mValue, lColor, sizeof(lColor));
+					}
+					lPoint.position[0] = lCoords[0];
+					lPoint.position[1] = lCoords[1];
+					lPoint.position[2] = lCoords[2];
+					lPoint.write(lOutputFile);
+					lTotalCount ++;
+				}
+			}
+
+			if (i%10000000 == 0)
+			{
+				BOOST_LOG_TRIVIAL(info) << "Main pass at " << i << " points";
+			}
+		}
+	}
+
+	PointCloud::updateSize(lOutputFile, lTotalCount);
+	PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
+	fclose(lOutputFile);
+	fclose(lInputFile);
+
+	json_spirit::mObject lMeta = getMeta(0);
+	lMeta["files"] = lArray;
+	return lMeta;
 }
 
 

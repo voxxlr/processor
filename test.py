@@ -7,8 +7,12 @@ import psutil
 import shutil
 import glob
 import time
+
+
 from io import BytesIO
 from pathlib import Path
+
+#resource.setrlimit(resource.RLIMIT_NOFILE, (131072, 131072))
 
 #setup directory and logfile
 startTime = time.time()
@@ -65,13 +69,14 @@ config = {
 #                    "name": "d:/home/voxxlr/data/cloud/1592244748825_Gill_Residence_1-0.e57"
 #                  "name": "d:/home/voxxlr/data/cloud/navvis/E57_HQ3rdFloor_SLAM_5mm.e57",
 #                    "name": "d:/home/voxxlr/data/cloud/distro-canyon.las"
+                    "name": "d:/home/voxxlr/data/cloud/1608214550828_Marley_Lane.laz"
 #                    "name": "d:/home/voxxlr/data/cloud/GORKA1.las"
-                   "name": "d:/home/voxxlr/data/ifc/Stairs.ifc"
+#                   "name": "d:/home/voxxlr/data/ifc/Stairs.ifc"
                 }
             ]
         }
     },
-    "type": 4,
+    "type": 1,
 }
 
 with open("meta.json", "w") as meta:

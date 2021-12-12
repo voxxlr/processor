@@ -4,6 +4,7 @@
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/filesystem.hpp>
 
 LasImporter::LasImporter(json_spirit::mObject& iConfig)
 : CloudImporter(iConfig)
@@ -136,10 +137,13 @@ json_spirit::mObject LasImporter::import (std::string iName)
 		//iCloud.addClass(sDefaultClasses[i*3+0], sDefaultClasses[i*3+1], sDefaultClasses[i*3+2]);  
 	}
 	*/
+	boost::filesystem::path lPath(iName);
+	json_spirit::mArray lArray;
+	lArray.push_back(lPath.stem().string());
 
 	// main pass
 	BOOST_LOG_TRIVIAL(info) << "Main pass ";
-	FILE* lOutputFile = PointCloud::writeHeader("cloud", lAttributes);
+	FILE* lOutputFile = PointCloud::writeHeader(lPath.stem().string(), lAttributes);
 	laszip_seek_point(lReader, 0);
 	for(unsigned long p=0; p < lPointCount; p++)
 	{
@@ -204,9 +208,9 @@ json_spirit::mObject LasImporter::import (std::string iName)
 	fclose(lOutputFile);
 	laszip_close_reader(lReader);
 
-	done();
-
-	return getMeta(maxClass);
+	json_spirit::mObject lMeta = getMeta(maxClass);
+	lMeta["files"] = lArray;
+	return lMeta;
 }
 
 /*
