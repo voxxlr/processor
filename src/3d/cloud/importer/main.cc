@@ -65,22 +65,6 @@ bool processFile(json_spirit::mObject& iConfig)
 		lProperties = lImporter.import(lFiles, iConfig["output"].get_str());
 	}
 
-	std::ifstream lStream("meta.json");
-	json_spirit::mValue lValue;
-	json_spirit::read_stream(lStream, lValue);
-	lStream.close();
-
-	json_spirit::mObject& lMeta = lValue.get_obj();
-	for (auto lIter = lProperties.begin(); lIter != lProperties.end(); lIter++)
-	{
-		lMeta[lIter->first] = lIter->second;
-	}
-
-	// write meta
-	std::ofstream lOstream("meta.json");
-	json_spirit::write_stream(lValue, lOstream);
-	lOstream.close();
-
 	json_spirit::write_stream(json_spirit::mValue(lProperties), std::cout);
 	return true;
 };

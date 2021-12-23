@@ -517,7 +517,7 @@ json_spirit::mObject PlyImporter::import (json_spirit::mArray iFiles, std::strin
 	PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
 	fclose(lOutputFile); 
 
-	json_spirit::mObject lMeta = getMeta(0);
+	json_spirit::mObject lMeta = getMeta();
 	json_spirit::mArray lArray;
 	lArray.push_back(lPath.stem().string());
 	lMeta["files"] = lArray;

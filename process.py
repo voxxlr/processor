@@ -36,8 +36,7 @@ if not os.path.exists("process"):
     os.makedirs("process")
     subprocess.run(['/usr/bin/gsutil','-q','-m','cp','-r','gs://voxxlr-upload/'+id+'/*','./process'])
 os.chdir("process")
-with open("meta.json", "w") as meta:
-    meta.write(json.dumps(config["meta"])+"\n")
+
 
 #logF = sys.stdout
 logF = open("process.log",'w')
@@ -55,10 +54,6 @@ def runVoxxlr(name,args):
     process.wait()
     return json.loads(response.decode('utf-8'))
 
-
-# pocess dataset
-with open("meta.json", "w") as meta:
-    meta.write(json.dumps(config["meta"])+"\n")
 
 if not os.path.exists("root"):
     os.makedirs("root")
@@ -176,7 +171,7 @@ client.put(document)
         
 #create metadata table entry
 meta = datastore.Entity(key=client.key("meta", -config["id"]), exclude_from_indexes=(['content']))
-meta["content"] = open('meta.json', 'r').read()
+meta["content"] = json.dumps(config["meta"])
 logF.write("create meta datastore entry\n")
 client.put(meta)
 

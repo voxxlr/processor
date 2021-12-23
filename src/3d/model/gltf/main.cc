@@ -30,6 +30,7 @@ bool processFile(json_spirit::mObject& iObject)
 
 	json_spirit::mObject lRoot = lModel->write(lDirectory);
 
+	/*
 	{
 		std::ifstream lStream("meta.json");
 		json_spirit::mValue lValue;
@@ -45,6 +46,7 @@ bool processFile(json_spirit::mObject& iObject)
 		json_spirit::write_stream(lValue, lOstream);
 		lOstream.close();
 	}
+	*/
 
 	// write root
 	std::ofstream lOstream("root.json");

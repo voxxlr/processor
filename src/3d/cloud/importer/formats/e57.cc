@@ -259,19 +259,14 @@ E57Importer::E57Importer(json_spirit::mObject& iConfig)
 : CloudImporter(iConfig)
 , mRadius2(std::numeric_limits<int>::max())
 {
-	if (iConfig.find("separate") == iConfig.end())
+	if (mConfig.find("separate") == mConfig.end() || mConfig["separate"].is_null())
 	{
-		iConfig["separate"] = false;
+		mConfig["separate"] = false;
 	}
 
-	if (iConfig.find("radius") != iConfig.end())
+	if (mConfig.find("radius") != mConfig.end() && !mConfig["radius"].is_null())
 	{
 		mRadius2 = mConfig["radius"].get_real()*mConfig["radius"].get_real();
-	};
-
-	if (iConfig.find("filter") != iConfig.end())
-	{
-	//	mFilter = boost::regex(mConfig["filter"].get_str().c_str());
 	};
 };
 
@@ -279,11 +274,14 @@ bool E57Importer::filtered(std::string iName)
 {
 	if (mConfig.find("filter") != mConfig.end())
 	{
-		BOOST_LOG_TRIVIAL(info) << iName <<  "  :   " << mConfig["filter"].get_str().c_str();
+		if (!mConfig["filter"].is_null())
+		{
+			BOOST_LOG_TRIVIAL(info) << iName << "  :   " << mConfig["filter"].get_str().c_str();
 
-		boost::regex lFilter(mConfig["filter"].get_str().c_str()); 
+			boost::regex lFilter(mConfig["filter"].get_str().c_str());
 
-		return !boost::regex_search(iName, lFilter);
+			return !boost::regex_search(iName, lFilter);
+		}
 	};
 	return false;
 }
@@ -314,6 +312,7 @@ json_spirit::mObject E57Importer::import (std::string iName)
 
 	// write ply
 	Point lPoint(lAttributes);
+
 	if (mConfig["separate"].get_bool())
 	{
 		for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
@@ -355,7 +354,7 @@ json_spirit::mObject E57Importer::import (std::string iName)
 		fclose(lOutputFile);
 	}
 
-    json_spirit::mObject lMeta = getMeta(0);
+    json_spirit::mObject lMeta = getMeta();
 	lMeta["files"] = lArray;
 	return lMeta;
 }

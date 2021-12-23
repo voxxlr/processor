@@ -45,6 +45,6 @@ class PointBuffer
 
 		size_t mCount;
 		FILE* mFile;
-		size_t mDatastart;
+		long mDatastart;
 }; 
   

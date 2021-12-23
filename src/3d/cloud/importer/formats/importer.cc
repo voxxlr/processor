@@ -80,7 +80,7 @@ uint16_t CloudImporter::sDefaultClasses[19*3] =
 	255,255,255			// 18 High Noise  
 };
 
-json_spirit::mObject CloudImporter::getMeta(uint8_t iMaxClass)
+json_spirit::mObject CloudImporter::getMeta()
 {
     json_spirit::mObject lMeta;
 
@@ -95,30 +95,6 @@ json_spirit::mObject CloudImporter::getMeta(uint8_t iMaxClass)
 		lTransform.push_back(lColumn);
 	}
 	lMeta["transform"] = lTransform;
-
-    if (iMaxClass > 0)
-    {
-	    json_spirit::mArray lClasses;
-
-        for (int i=0; i<std::max(iMaxClass, (uint8_t)19); i++)
-        {
-	        json_spirit::mObject lColor;
-	        lColor["r"] = sDefaultClasses[i*3+0];
-	        lColor["g"] = sDefaultClasses[i*3+1];
-	        lColor["b"] = sDefaultClasses[i*3+2];
-            lClasses.push_back(lColor);
-        }
-        for (int i=19; i<iMaxClass; i++)
-        {
- 	        json_spirit::mObject lColor;
-	        lColor["r"] = 90;
-	        lColor["g"] = 90;
-	        lColor["b"] = 90;
-            lClasses.push_back(lColor);
-       }
-
-        lMeta["classes"] = lClasses;
-    }
 
 	return lMeta;
 }

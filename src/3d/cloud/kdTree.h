@@ -6,8 +6,8 @@
 
 typedef struct Block
 {  
-	uint32_t  mLower;     
-	uint32_t  mUpper; 
+	size_t  mLower;
+	size_t  mUpper; 
 
 	static const int X = 0;
 	static const int Y = 1;
@@ -59,7 +59,7 @@ typedef struct Block
 		}
 	}
 
-	inline uint32_t size()
+	inline size_t size()
 	{
 		return mUpper - mLower;
 	}
@@ -241,7 +241,7 @@ class KdColorDomain
 			int32_t dr = lColorA->mValue[0] - lColorB->mValue[0];
 			int32_t dg = lColorA->mValue[1] - lColorB->mValue[1];
 			int32_t db = lColorA->mValue[2] - lColorB->mValue[2];
-			return dr*dr + dg*dg + db*db;
+			return (float)(dr*dr + dg*dg + db*db);
 		}
 
 	protected:

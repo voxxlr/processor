@@ -99,7 +99,7 @@ KdFileTreeNode::~KdFileTreeNode()
 	}
 }
 
-#define PLANK_LENGTH  0.0005
+#define PLANK_LENGTH  0.0005f
 
 bool KdFileTreeNode::grow(std::string iIndent, uint32_t iLeafsize)
 {
@@ -161,7 +161,7 @@ bool KdFileTreeNode::grow(std::string iIndent, uint32_t iLeafsize)
 			else
 			{
 				float lVolume = (max[2] - min[2]) * (max[1] - min[1]) * (max[0] - min[0]);
-				mVolumeLimit = std::max(1.0, lVolume / (PLANK_LENGTH * PLANK_LENGTH * PLANK_LENGTH));
+				mVolumeLimit = std::max((uint64_t) 1, (uint64_t)(lVolume / (PLANK_LENGTH * PLANK_LENGTH * PLANK_LENGTH)));
 				BOOST_LOG_TRIVIAL(info) << iIndent << "degenerate " << mCount << " points in " << lVolume << " m2. Limiting volume to " << mVolumeLimit;
 				mAlive = false;
 			}
@@ -170,53 +170,11 @@ bool KdFileTreeNode::grow(std::string iIndent, uint32_t iLeafsize)
 		{
 			mAlive = false;
 		}
-
-		/*
-		if (mCount > iLeafsize)
-		{
-			float lVolume = (max[2] - min[2])*(max[1] - min[1])*(max[0] - min[0]);
-			// split along axis where median is farthest from bbox
-			float lMaxD = 0;
-			for (int i=0; i<3; i++)
-			{
-				float dToBox = std::min(max[i] - median[i], median[i] - min[i]);
-				if (dToBox > lMaxD)
-				{
-					lMaxD = dToBox;
-					mAxis = i;
-				}
-			}
-	
-			//if (lMaxD > iVoxelSize) 
-			//{
-				mSplit = median[mAxis];
-
-				mChildLow = new KdFileTreeNode(mPath+"0", mHeight+1); 
-				memcpy(mChildLow->min, min, sizeof(min));
-				memcpy(mChildLow->max, max, sizeof(max));
-				mChildLow->max[mAxis] = mSplit;
-
-				mChildHigh = new KdFileTreeNode(mPath+"1", mHeight+1);
-				memcpy(mChildHigh->min, min, sizeof(min));
-				memcpy(mChildHigh->max, max, sizeof(max));
-				mChildHigh->min[mAxis] = mSplit;
-
-				mState[LEAF] = false;
-				mAlive = true;
-				BOOST_LOG_TRIVIAL(info) << iIndent << "Split -----  " << mSplit;
-			//}	
-			//else
-			//{
-			//	BOOST_LOG_TRIVIAL(info) << iIndent <<  "degenerate data detected (lMaxD) " << lMaxD;
-			//	mState[DEGENERATE] = true;
-			//}
-		}
-		*/
 	}
 	return mAlive;
 }
 
-void KdFileTreeNode::feed(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, boost::thread_group*& iGroup, int32_t iThreadCount)
+void KdFileTreeNode::feed(uint8_t* iBuffer, uint32_t iStride, size_t iCount, boost::thread_group*& iGroup, int32_t iThreadCount)
 {
 	if (mChildLow && mChildHigh)
 	{
@@ -246,7 +204,7 @@ void KdFileTreeNode::feed(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, b
 	}
 }
 
-void KdFileTreeNode::recordChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount) 
+void KdFileTreeNode::recordChunk(uint8_t* iBuffer, uint32_t iStride, size_t iCount) 
 {
 	for (uint32_t i=0; i<iCount; i++)
 	{
@@ -275,7 +233,7 @@ void KdFileTreeNode::openFiles(PointCloudAttributes& iAttributes, float iResolut
 	}
 }
 
-void KdFileTreeNode::writeChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, float iOverlap)
+void KdFileTreeNode::writeChunk(uint8_t* iBuffer, uint32_t iStride, size_t iCount, float iOverlap)
 {
 	float lMin[3];
 	memcpy(lMin, min, sizeof(min));
@@ -290,7 +248,7 @@ void KdFileTreeNode::writeChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iCo
 	lMax[2] += iOverlap;
 
 	uint8_t* lPointer = iBuffer;
-	for (int i = 0; i < iCount; i++)
+	for (size_t i = 0; i < iCount; i++)
 	{
 		if (mVolumeLimit && mCount > mVolumeLimit)
 		{
@@ -472,37 +430,6 @@ void KdFileTree::construct(std::string iName, uint32_t iLeafsize, float iOverlap
 	BOOST_LOG_TRIVIAL(info) << "Constructing filetree for " << lPointCount << " points:";
 	BOOST_LOG_TRIVIAL(info) << "   Leafsize " << iLeafsize << " points ";
 	BOOST_LOG_TRIVIAL(info) << "   Overlap " << iOverlap << " meters ";
-
-
-	/*
-	BOOST_LOG_TRIVIAL(info) << "1.0";
-	FILE* lDDDD = PointCloud::writeHeader(iName + "DDD", mPointAttributes, 0);
-
-	BOOST_LOG_TRIVIAL(info) << "1.1";
-	// pass one - build tree
-	PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());
-
-	BOOST_LOG_TRIVIAL(info) << "1.2";
-	lPointBuffer.begin();
-	size_t lTotal = 0;
-	while (!lPointBuffer.end())
-	{
-		PointBuffer::Chunk& lChunk = lPointBuffer.next();
-
-		BOOST_LOG_TRIVIAL(info) << "1.----" << lChunk.mSize;
-		for (size_t i = 0; i < lChunk.mSize; i++)
-		{
-			uint8_t* lPointer = lChunk.mData + i * lPointBuffer.mStride;
-			fwrite(lPointer, 1, lPointBuffer.mStride, lDDDD);
-			lTotal++;
-		}
-	}
-	PointCloud::updateSize(lDDDD, lTotal);
-	BOOST_LOG_TRIVIAL(info) << "DONE";
-	fclose(lDDDD);
-	exit(0);
-	*/
-
 
 	// pass one - build tree
 	PointBuffer lPointBuffer(lFile, lPointCount, mPointAttributes.bytesPerPoint() + 3 * sizeof(float), availableMemory());

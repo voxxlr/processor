@@ -42,7 +42,7 @@ class KdFileTreeNode
 		uint64_t mCount;
 		uint64_t mVolumeLimit;
 
-		void feed(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, boost::thread_group*& iGroup, int32_t iThreadCount);
+		void feed(uint8_t* iBuffer, uint32_t iStride, size_t iCount, boost::thread_group*& iGroup, int32_t iThreadCount);
 		bool grow(std::string iIndent, uint32_t iLeafsize);
 
 		void openFiles(PointCloudAttributes& iAttributes, float iResolution);
@@ -58,8 +58,8 @@ class KdFileTreeNode
 		KdFileTreeNode();
 		KdFileTreeNode(KdFileTreeNode& iNode);
 
-		void recordChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount);
-		void writeChunk(uint8_t* iBuffer, uint32_t iStride, uint32_t iCount, float iOverlap);
+		void recordChunk(uint8_t* iBuffer, uint32_t iStride, size_t iCount);
+		void writeChunk(uint8_t* iBuffer, uint32_t iStride, size_t iCount, float iOverlap);
 
 		static const int X = 0;
 		static const int Y = 1;

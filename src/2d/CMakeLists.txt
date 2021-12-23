@@ -5,7 +5,7 @@ project(tiler)
 find_package(PNG REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS log)
-find_package(geotiff CONFIG REQUIRED)
+find_package(GeoTIFF CONFIG REQUIRED)
 
 file(GLOB TILER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.cc" "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
 add_executable(tiler  ${TILER_FILES})

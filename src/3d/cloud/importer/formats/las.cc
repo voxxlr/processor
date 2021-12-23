@@ -208,7 +208,7 @@ json_spirit::mObject LasImporter::import (std::string iName)
 	fclose(lOutputFile);
 	laszip_close_reader(lReader);
 
-	json_spirit::mObject lMeta = getMeta(maxClass);
+	json_spirit::mObject lMeta = getMeta();
 	lMeta["files"] = lArray;
 	return lMeta;
 }

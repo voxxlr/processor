@@ -26,7 +26,7 @@ class PointCloudAttributes
 		int createAttribute(const std::string& iName, Attribute& iAttribute);
 		int getAttributeIndex(const std::string& iName);
 		bool hasAttribute(const std::string& iName);
-		int attributeCount()
+		size_t attributeCount()
 		{
 			return mList.size();
 		}

@@ -84,7 +84,7 @@ class CloudImporter
 	
 		void done();
  
-		json_spirit::mObject getMeta(uint8_t iMaxClass);
+		json_spirit::mObject getMeta();
 		
 		glm::dmat4 mTransform;
 

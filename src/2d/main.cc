@@ -33,6 +33,7 @@ bool processFile(json_spirit::mObject& iObject)
 		lRoot["color"] = lTiler.mRoot;
 
 		// add projection to meta data
+		/*
 		std::ifstream lStream("meta.json");
 		json_spirit::mValue lValue;
 		json_spirit::read_stream(lStream, lValue);
@@ -45,6 +46,7 @@ bool processFile(json_spirit::mObject& iObject)
 		std::ofstream lOstream("meta.json");
 		json_spirit::write_stream(lValue, lOstream);
 		lOstream.close();
+		*/
 	}
 	else
 	{

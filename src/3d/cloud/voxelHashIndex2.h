@@ -89,7 +89,7 @@ class VoxelHashIndex2
 		std::vector<Voxel*> mIndex;
 		std::vector<Point*>& mCloud;
 
-		uint32_t mSize;
+		size_t mSize;
 		float mResolution;
 }; 
   

@@ -65,7 +65,7 @@ void Analyzer::processNode(KdFileTreeNode& iNode, PointCloud& iCloud)
 	std::vector<uint32_t> lSamples;
 	lSamples.reserve(lMax);
 	Random lRandom(1, iCloud.size());
-	uint32_t lAttempts = 2*lMax;
+	size_t lAttempts = 2*lMax;
 	while (lSamples.size() < lMax && lAttempts)
 	{
 		uint32_t lIndex = lRandom.next();

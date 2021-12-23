@@ -28,9 +28,6 @@ bool processFile(json_spirit::mObject& iObject)
 	KdFileTree lFileTree;
 	lFileTree.construct(iObject["file"].get_str(), std::min((uint64_t)(availableMemory()/150)/lThreads, lPointCount/lThreads), 0.00);
 
-	//lFileTree.collapse("COLLAPSED", 0);
-	//exit(0);
-
 	Analyzer lAnalyzer;
 	lFileTree.process(lAnalyzer, KdFileTree::LEAVES);
 	lFileTree.remove();

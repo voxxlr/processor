@@ -13,8 +13,6 @@ json_spirit::mObject PtsImporter::import(std::string iName)
 {
 	FILE* lInputFile = fopen(iName.c_str(), "rb");
 
-	uint64_t lPointCount = 0;
-
 	PointCloudAttributes lCloud;
 	int lIntensityIndex = -1;
 	int lColorIndex = -1;
@@ -75,13 +73,13 @@ json_spirit::mObject PtsImporter::import(std::string iName)
 	// Main pass		
 	Point lPoint(lCloud);
 
-	uint64_t lTotal = 0;
 	FILE* lOutputFile = PointCloud::writeHeader(lPath.stem().string(), lCloud);
 	IntensityType* lIntensityAttribute = (IntensityType*)lPoint.getAttribute(lIntensityIndex);
 	ColorType* lColorAttribute = (ColorType*)lPoint.getAttribute(lColorIndex);
 
 	fseek(lInputFile, 0, SEEK_SET);
 	fgets(lLine, 256, lInputFile); // just skip first line ..
+	uint64_t lPointCount = 0;
 	while (fgets(lLine, 256, lInputFile))
 	{
 		int lIntensity;
@@ -116,13 +114,13 @@ json_spirit::mObject PtsImporter::import(std::string iName)
 
 		lPointCount ++;
 	}
-
-	PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
-	PointCloud::updateSize(lOutputFile, lTotal);
-	fclose(lOutputFile);
 	fclose(lInputFile);
 
-	json_spirit::mObject lMeta = getMeta(0);
+	PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
+	PointCloud::updateSize(lOutputFile, lPointCount);
+	fclose(lOutputFile);
+
+	json_spirit::mObject lMeta = getMeta();
 	lMeta["files"] = lArray;
 	return lMeta;
 }

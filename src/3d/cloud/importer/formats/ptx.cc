@@ -227,7 +227,7 @@ json_spirit::mObject PtxImporter::import(std::string iName)
 	fclose(lOutputFile);
 	fclose(lInputFile);
 
-	json_spirit::mObject lMeta = getMeta(0);
+	json_spirit::mObject lMeta = getMeta();
 	lMeta["files"] = lArray;
 	return lMeta;
 }

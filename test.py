@@ -17,86 +17,47 @@ from pathlib import Path
 #setup directory and logfile
 startTime = time.time()
 
-if not os.path.exists("process"):
-    os.makedirs("process")
-os.chdir("process")
-
-if not os.path.exists("root"):
-    os.makedirs("root")
-#logF = open("/process.log",'w')
-logF = sys.stdout
-
-logF.write("################\n")
-root = os.path.dirname(os.path.abspath(__file__))
-logF.write(root+"\n")
-
-'''
-test me
-if os.name == "posix":
-    ulimit -Sn 4096
-    process = subprocess.Popen("ulimit -Sn 4096", stdout=logF, stderr=logF, shell=True,cwd=".")
-    stdout, stderr = process.communicate()
-    process.wait()
-'''
-
+processor = os.path.dirname(os.path.abspath(__file__))
 def runVoxxlr(name,args):
    if os.name == "posix":
-        name = f"sudo {root}/bin/{name}"
-        logF.write(name+" \""+json.dumps(args).replace('"','\\"')+"\"\n")
-        #logF.write(json.dumps(args,sort_keys=True,indent=4)+"\n")
-        #process = subprocess.Popen([name,json.dumps(args)], stdout=logF, stderr=logF, shell=True)
-        process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=subprocess.PIPE, stderr=logF, shell=True,cwd=".")
+        name = f"{processor}/bin/{name}"
+        sys.stdout.write(name+" \""+json.dumps(args).replace('"','\\"')+"\"\n")
+        process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=subprocess.PIPE, stderr=sys.stdout, shell=True,cwd=".")
    else:
-        name = f"{root}/bin/{name}.exe"
-        logF.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
-        #logF.write(json.dumps(args,sort_keys=True,indent=4)+"\n")
-        process = subprocess.Popen([name,json.dumps(args)], stdout=subprocess.PIPE, stderr=logF, shell=True)
+        name = f"{processor}/bin/{name}.exe"
+        sys.stdout.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
+        process = subprocess.Popen([name,json.dumps(args)], stdout=subprocess.PIPE, stderr=sys.stdout, shell=True)
 
    response, error = process.communicate()
    process.wait()
    return json.loads(response.decode('utf-8'))
 
 
-config = {
-    "meta": 
-    {
-        "source":
-        {
-            "files": [
-                { 
-#                    "name": "d:/home/voxxlr/data/cloud/BAUM.e57"
-#                     "name": "d:/home/voxxlr/data/cloud/1637810132834_759 LatestPC.e57"
-#                    "name": "d:/home/voxxlr/data/cloud/1592244748825_Gill_Residence_1-0.e57"
-#                  "name": "d:/home/voxxlr/data/cloud/navvis/E57_HQ3rdFloor_SLAM_5mm.e57",
-#                    "name": "d:/home/voxxlr/data/cloud/distro-canyon.las"
-                    "name": "d:/home/voxxlr/data/cloud/1608214550828_Marley_Lane.laz"
-#                    "name": "d:/home/voxxlr/data/cloud/GORKA1.las"
-#                   "name": "d:/home/voxxlr/data/ifc/Stairs.ifc"
-                }
-            ]
-        }
-    },
-    "type": 1,
-}
+#load config file
+os.chdir(sys.argv[1])
+with open("process.json", "r") as file:
+    config = json.load(file)
 
-with open("meta.json", "w") as meta:
-    meta.write(json.dumps(config["meta"])+"\n")
+#create output directory
+directory = Path(config["file"]).stem
+if not os.path.exists(directory):
+    os.makedirs(directory)
+os.chdir(directory)
 
-source = config["meta"]["source"];
+type = Path(config["file"]).suffix
 
-if config["type"] == 1: #"cloud"
-
-    file = source["files"][0]["name"]
+if type in [".e57", ".pts", ".laz"]: #"cloud"
 
     response = runVoxxlr("cloud/importer", 
         {
-        "file": [file],
-        #"radius": 10,
+        "file": [f'../{config["file"]}'],
+        "filter": config["filter"] if "filter" in config else None,
+        "radius": config["radius"] if "radius" in config else None,
         "coords": config["coords"] if "coords" in config else "right-z",
-        "scalar": config["scalar"] if "scalar" in config else 1,
+        "transform": config["transform"] if "transform" in config else None,
         #"separate": True
         })
-
+    
     dataset = response["files"][0]
 
     #apply average filter
@@ -104,7 +65,7 @@ if config["type"] == 1: #"cloud"
         resolution = runVoxxlr("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
     else:
         resolution = config["resolution"]
- 
+    
     runVoxxlr("cloud/filter",
             { 
             "resolution": resolution,
@@ -112,7 +73,60 @@ if config["type"] == 1: #"cloud"
             })
 
     runVoxxlr("cloud/packetizer", {  "file": f'./{dataset}' })
+    
+    os.remove(f'./{dataset}.ply')
+    
+    for file in glob.glob('./*.ply'):
+        os.remove(file)
+    for file in glob.glob('./*.log'):
+        os.remove(file)
+  
 
+elif config["type"] == 2:#"map"
+
+    color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
+    elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
+    runVoxxlr("map/tiler", { 
+                "cpus": psutil.cpu_count(),
+                "memory": psutil.virtual_memory().free,
+                "color": color,
+                "elevation": elevation,
+                })
+
+elif config["type"] == 3:#"panorama"
+    
+    runVoxxlr("panorama/cuber", { 
+                "cpus": psutil.cpu_count(),
+                "memory": psutil.virtual_memory().free,
+                "file": source["files"][0]["name"],
+                })
+
+elif config["type"] == 4:#"model"
+
+    for file in source["files"]:
+
+        if file["name"].endswith("gltf"):
+         
+            runVoxxlr("model/gltf", { 
+                        "cpus": psutil.cpu_count(),
+                        "memory": psutil.virtual_memory().free,
+                        "file": file["name"],
+                        "scalar": config["scalar"] if "scalar" in config else 1
+                        })
+         
+        elif file["name"].endswith("ifc") or file["name"].endswith("IFC"):
+         
+            runVoxxlr("model/ifc", { 
+                        "cpus": psutil.cpu_count(),
+                        "memory": psutil.virtual_memory().free,
+                        "file": file["name"],
+                        "scalar": config["scalar"] if "scalar" in config else 1
+                        })
+
+
+
+
+                        
     '''
     if len(response["files"]) > 1:
 
@@ -167,47 +181,3 @@ if config["type"] == 1: #"cloud"
 
         runVoxxlr("cloud/packetizer", {  "file": "../combined" })
     '''
-
-  
-
-elif config["type"] == 2:#"map"
-
-    color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
-    elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
-    runVoxxlr("map/tiler", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "color": color,
-                "elevation": elevation,
-                })
-
-elif config["type"] == 3:#"panorama"
-    
-    runVoxxlr("panorama/cuber", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "file": source["files"][0]["name"],
-                })
-
-elif config["type"] == 4:#"model"
-
-    for file in source["files"]:
-
-        if file["name"].endswith("gltf"):
-         
-            runVoxxlr("model/gltf", { 
-                        "cpus": psutil.cpu_count(),
-                        "memory": psutil.virtual_memory().free,
-                        "file": file["name"],
-                        "scalar": config["scalar"] if "scalar" in config else 1
-                        })
-         
-        elif file["name"].endswith("ifc") or file["name"].endswith("IFC"):
-         
-            runVoxxlr("model/ifc", { 
-                        "cpus": psutil.cpu_count(),
-                        "memory": psutil.virtual_memory().free,
-                        "file": file["name"],
-                        "scalar": config["scalar"] if "scalar" in config else 1
-                        })
-

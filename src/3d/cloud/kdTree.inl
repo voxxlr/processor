@@ -108,7 +108,7 @@ template <typename ATTRIBUTE> void KdTree<ATTRIBUTE>::construct()
 			break;
 		}
 
-		lBlock->mSplit = lMedianValue;
+		lBlock->mSplit = (float)lMedianValue;
 
 		lBlockList.pop();
 
