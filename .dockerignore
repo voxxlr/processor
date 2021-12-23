@@ -1,0 +1,14 @@
+README.md
+CLA.md
+LICENSE.txt
+Dockerfile
+.gitattributes
+.gitconfig
+.dockerignore
+docker-build.sh
+docker-run.sh
+docker-exec.sh
+.git/
+build/
+bin/
+process/

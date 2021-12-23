@@ -32,30 +32,14 @@ bool processFile(json_spirit::mObject& iObject)
 
 	IfcParser lParser;
 	Model* lModel = lParser.processIfcProject(*lLoader.getProject());  
-
 	json_spirit::mObject lRoot = lModel->write(boost::filesystem::path("."));
 
 	// write root
 	std::ofstream lOstream("root.json");
 	json_spirit::write_stream(json_spirit::mValue(lRoot), lOstream);
 	lOstream.close();
-	/*
-	{
-		std::ifstream lStream("meta.json");
-		json_spirit::mValue lValue;
-		json_spirit::read_stream(lStream, lValue);
-		lStream.close();
-
-		json_spirit::mObject& lMeta = lValue.get_obj();
-		lMeta["min"] = lRoot["min"].get_obj();
-		lMeta["max"] = lRoot["max"].get_obj();
-
-		// write meta
-		std::ofstream lOstream("meta.json");
-		json_spirit::write_stream(lValue, lOstream);
-		lOstream.close();
-	}
-	*/
+	
+	// return json object
 	json_spirit::mObject lResult;
 	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 	 

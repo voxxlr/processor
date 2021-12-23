@@ -20,10 +20,6 @@ bool processFile(json_spirit::mObject& iObject)
 {
 	json_spirit::mObject lRoot;
 
-//	std::stringstream ll;
-//	json_spirit::write_stream(json_spirit::mValue(lSource), ll);
-//	BOOST_LOG_TRIVIAL(error) << ll.str();
-
 	// color
 	if (iObject.find("color") != iObject.end())
 	{
@@ -31,22 +27,6 @@ bool processFile(json_spirit::mObject& iObject)
 
 		lTiler.process(iObject["color"].get_str());
 		lRoot["color"] = lTiler.mRoot;
-
-		// add projection to meta data
-		/*
-		std::ifstream lStream("meta.json");
-		json_spirit::mValue lValue;
-		json_spirit::read_stream(lStream, lValue);
-		lStream.close();
-
-		json_spirit::mObject& lMeta = lValue.get_obj();
-		lMeta["proj"] = lTiler.mRoot["proj"];
-
-		// write meta
-		std::ofstream lOstream("meta.json");
-		json_spirit::write_stream(lValue, lOstream);
-		lOstream.close();
-		*/
 	}
 	else
 	{
@@ -70,6 +50,7 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(json_spirit::mValue(lRoot), lOstream);
 	lOstream.close();
 
+	// return json object
 	json_spirit::mObject lResult;
 	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 
