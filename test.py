@@ -7,7 +7,7 @@ import psutil
 import shutil
 import glob
 import time
-
+import yaml
 
 from io import BytesIO
 from pathlib import Path
@@ -35,93 +35,95 @@ def runVoxxlr(name,args):
 
 #load config file
 os.chdir(sys.argv[1])
-with open("process.json", "r") as file:
-    config = json.load(file)
 
-#create output directory
-directory = Path(config["file"]).stem
-if not os.path.exists(directory):
-    os.makedirs(directory)
-os.chdir(directory)
+with open("process.yaml", "r") as file:
+    for config in yaml.load_all(file, Loader=yaml.SafeLoader):
 
-type = Path(config["file"]).suffix
+        #create output directory
+        directory = Path(config["file"]).stem
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        os.chdir(directory)
 
-if type in [".e57", ".pts", ".laz"]: #"cloud"
+        datatype = Path(config["file"]).suffix
 
-    response = runVoxxlr("cloud/importer", 
-        {
-        "file": [f'../{config["file"]}'],
-        "filter": config["filter"] if "filter" in config else None,
-        "radius": config["radius"] if "radius" in config else None,
-        "coords": config["coords"] if "coords" in config else "right-z",
-        "transform": config["transform"] if "transform" in config else None,
-        #"separate": True
-        })
-    
-    dataset = response["files"][0]
+        if datatype in [".e57", ".pts", ".laz"]: #"cloud"
 
-    #apply average filter
-    if not "resolution" in config:
-        resolution = runVoxxlr("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
-    else:
-        resolution = config["resolution"]
-    
-    runVoxxlr("cloud/filter",
-            { 
-            "resolution": resolution,
-            "file": f'./{dataset}'
-            })
-
-    runVoxxlr("cloud/packetizer", {  "file": f'./{dataset}' })
-    
-    os.remove(f'./{dataset}.ply')
-    
-    for file in glob.glob('./*.ply'):
-        os.remove(file)
-    for file in glob.glob('./*.log'):
-        os.remove(file)
-  
-
-elif config["type"] == 2:#"map"
-
-    color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
-    elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
-    runVoxxlr("map/tiler", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "color": color,
-                "elevation": elevation,
+            response = runVoxxlr("cloud/importer", 
+                {
+                "file": [f'../{config["file"]}'],
+                "filter": config["filter"] if "filter" in config else None,
+                "radius": config["radius"] if "radius" in config else None,
+                "coords": config["coords"] if "coords" in config else "right-z",
+                "transform": config["transform"] if "transform" in config else None,
+                #"separate": True
                 })
-
-elif config["type"] == 3:#"panorama"
     
-    runVoxxlr("panorama/cuber", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "file": source["files"][0]["name"],
-                })
+            dataset = response["files"][0]
 
-elif config["type"] == 4:#"model"
+            #apply average filter
+            if not "resolution" in config:
+                resolution = runVoxxlr("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
+            else:
+                resolution = config["resolution"]
+    
+            runVoxxlr("cloud/filter",
+                    { 
+                    "resolution": resolution,
+                    "file": f'./{dataset}'
+                    })
 
-    for file in source["files"]:
+            runVoxxlr("cloud/packetizer", {  "file": f'./{dataset}' })
+    
+            os.remove(f'./{dataset}.ply')
+    
+            for file in glob.glob('./*.ply'):
+                os.remove(file)
+            for file in glob.glob('./*.log'):
+                os.remove(file)
 
-        if file["name"].endswith("gltf"):
-         
-            runVoxxlr("model/gltf", { 
+        elif datatype in [".tiff"]: #"map"
+
+            color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
+            elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
+            runVoxxlr("map/tiler", { 
                         "cpus": psutil.cpu_count(),
                         "memory": psutil.virtual_memory().free,
-                        "file": file["name"],
-                        "scalar": config["scalar"] if "scalar" in config else 1
+                        "color": color,
+                        "elevation": elevation,
                         })
-         
-        elif file["name"].endswith("ifc") or file["name"].endswith("IFC"):
-         
-            runVoxxlr("model/ifc", { 
+
+        elif datatype in [".jpg", ".jpeg"]: #"panorama"
+    
+            runVoxxlr("panorama/cuber", { 
                         "cpus": psutil.cpu_count(),
                         "memory": psutil.virtual_memory().free,
-                        "file": file["name"],
-                        "scalar": config["scalar"] if "scalar" in config else 1
+                        "file": source["files"][0]["name"],
                         })
+
+        elif datatype in [".ifc", ".gltf"]:#"model"
+
+            for file in source["files"]:
+
+                if file["name"].endswith("gltf"):
+         
+                    runVoxxlr("model/gltf", { 
+                                "cpus": psutil.cpu_count(),
+                                "memory": psutil.virtual_memory().free,
+                                "file": file["name"],
+                                "scalar": config["scalar"] if "scalar" in config else 1
+                                })
+         
+                elif file["name"].endswith("ifc") or file["name"].endswith("IFC"):
+         
+                    runVoxxlr("model/ifc", { 
+                                "cpus": psutil.cpu_count(),
+                                "memory": psutil.virtual_memory().free,
+                                "file": file["name"],
+                                "scalar": config["scalar"] if "scalar" in config else 1
+                                })
+
+        os.chdir("..")
 
 
 

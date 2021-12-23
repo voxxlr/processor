@@ -1,1 +1,1 @@
-docker run --name gtprocessor -v $1:/root/data -td gtprocessor
+docker run --name vxProcessor -v $1:/root/data -td vxProcessor

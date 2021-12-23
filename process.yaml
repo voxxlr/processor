@@ -1,0 +1,7 @@
+---
+file: 'FILENAME here'
+coords: right-z # coordinate system of data set in file
+# point cloud processing parameters
+#resolution: 0.00012  # average point spacing. comment in to override auto detection
+#radius: 2.9 # cutoff points beyond this radius from sensor (for e56 only)
+#density: 0.03 # filter points with lower density (%/100.0)

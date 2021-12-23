@@ -37,7 +37,6 @@ if not os.path.exists("process"):
     subprocess.run(['/usr/bin/gsutil','-q','-m','cp','-r','gs://voxxlr-upload/'+id+'/*','./process'])
 os.chdir("process")
 
-
 #logF = sys.stdout
 logF = open("process.log",'w')
 logF.write("################\n")

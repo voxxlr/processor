@@ -1,60 +1,33 @@
-# Under construction...
+# Overview
+The Voxxlr processor converts input files into a format required by the voxxlr doc server. The pipeline is deployed
+using and thus requied the docker engine to be installed. Once that is done follow the instructions below to build and 
+execute the processor. 
 
+## building the docker image
 
-## linux
+Run the following shell script to build the docker image.
 
 ```sh
-sudo passwd root
-
-apt-get update
-apt-get install wget
-
-wget https://github.com/Kitware/CMake/releases/download/v3.18.2/cmake-3.18.2-Linux-x86_64.sh -O cmake.sh
-sh cmake.sh --prefix=/usr/local/ --exclude-subdir
-
-apt-get install build-essential tar zip unzip git 
-apt-get install pkg-config
-apt-get install libpng-dev
-
-
-cd ~
-git clone https://github.com/microsoft/vcpkg
-./vcpkg/bootstrap-vcpkg.sh
-
-// clone this repo
-git clone https://jochenstier:###@github.com/voxxlr/processor.git processor
-cd processor
-mkdir build
-cd build
-cmake .. -DCMAKE_TOOLCHAIN_FILE=/root/vcpkg/scripts/buildsystems/vcpkg.cmake
-make
-
-
-apt-get -y install python3-pip
-
-python3 -m pip install psutil
-python3 -m pip install --upgrade google-cloud-datastore
-python3 -m pip install --upgrade Pillow
-
-crontab -e
-@reboot /usr/bin/python3 /root/processor/process.py
-
-
-vi ~/.bashrc
-alias reboot="sudo systemctl reboot"
-
-// set open file limit
-ulimit -Sn 4096
-
-cd ~/test
-cp processor.py ..
-
+./docker-build.sh
 ```
 
-## windows
+Once done a new docker image called vxProcessor should be listed when running 
 
-py -m pip install psutil
+```sh
+docker images
+```
 
-cmake .. -DCMAKE_TOOLCHAIN_FILE=d:/test/vcpkg/scripts/buildsystems/vcpkg.cmake
+## running the docker image
+
+Run the following shell script 
+
+```sh
+./docker-run.sh DATA_DIR
+```
+
+to process datasets located in the DATA_DIR directory. The DATA_DIR must contain a file call process.yaml that
+contains instructions for the processor including which files to process. 
+
+
 
 
