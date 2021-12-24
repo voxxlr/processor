@@ -29,8 +29,9 @@ bool processFile(json_spirit::mObject& iConfig)
 	lFileTree.process(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
 	lFileTree.remove();
 
+	std::ofstream lOstream("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
+	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
 
 	return true;
 };

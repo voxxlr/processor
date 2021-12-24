@@ -16,8 +16,6 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
 
-using boost::asio::ip::tcp;
-
 #include "task.h"
 
 #include "IfcLoader.h"
@@ -40,9 +38,10 @@ bool processFile(json_spirit::mObject& iObject)
 	lOstream.close();
 	
 	// return json object
+	std::ofstream lOstream("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
-	 
+	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
+
 	return true;  
 };
      
@@ -53,50 +52,3 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS; 
 }
 
-
-	/*
-	boost::filesystem::path targetDir(".");
-	boost::filesystem::directory_iterator end;
-    for (boost::filesystem::directory_iterator iter(targetDir); iter != end; ++iter)
-    {
-        const boost::filesystem::path lPath = (*iter);
-
-		BOOST_LOG_TRIVIAL(error) << lPath.string();
-		if (boost::filesystem::extension(lPath.string()) == ".ifc")
-		{
-			IfcLoader lLoader;
-			IfcProject* lProject = lLoader.process(lPath.string());
-
-			IfcParser lParser;
-			Model* lModel = lParser.process(*lProject, lSource);
-			iRequest["root"] = lModel->write();
-
-			json_spirit::mObject lRoot = iRequest["root"].get_obj();
-			lMeta["min"] = lRoot["min"].get_obj();
-			lMeta["max"] = lRoot["max"].get_obj();
-			break;
-		}
-    }
-	*/
-
-	/*
-	json_spirit::mArray& lArray = lSource["files"].get_array();
-	for (int i=0; i<lArray.size(); i++)
-	{
-		if (boost::algorithm::ends_with(lArray[i].get_str(), "ifc"))
-		{
-			IfcLoader lLoader;
-			IfcProject* lProject = lLoader.process(lArray[i].get_str());
-
-			IfcParser lParser;
-			Model* lModel = lParser.process(*lProject, lSource);
-			iRequest["root"] = lModel->write();
-
-			json_spirit::mObject lRoot = iRequest["root"].get_obj();
-			lMeta["min"] = lRoot["min"].get_obj();
-			lMeta["max"] = lRoot["max"].get_obj();
-			break;
-		}
-	}
-	*/
-	

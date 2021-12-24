@@ -51,7 +51,8 @@ def runVoxxlr(name,args):
     process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=subprocess.PIPE, stderr=logF, shell=True,cwd=".")
     response, error = process.communicate()
     process.wait()
-    return json.loads(response.decode('utf-8'))
+    with open("process.json", "r") as file:
+        return json.load(file)
 
 
 if not os.path.exists("root"):

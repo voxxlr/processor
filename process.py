@@ -14,9 +14,6 @@ from pathlib import Path
 
 #resource.setrlimit(resource.RLIMIT_NOFILE, (131072, 131072))
 
-#setup directory and logfile
-startTime = time.time()
-
 processor = os.path.dirname(os.path.abspath(__file__))
 def runVoxxlr(name,args):
    if os.name == "posix":
@@ -28,15 +25,20 @@ def runVoxxlr(name,args):
         sys.stdout.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
         process = subprocess.Popen([name,json.dumps(args)], stdout=subprocess.PIPE, stderr=sys.stdout, shell=True)
 
-   response, error = process.communicate()
+   process.communicate()
    process.wait()
-   return json.loads(response.decode('utf-8'))
 
+   response = {}
+   with open("process.json", "r") as file:
+        response = json.load(file)
+   os.remove("process.json")
+   return response
 
 #load config file
 os.chdir(sys.argv[1])
 
 with open("process.yaml", "r") as file:
+
     for config in yaml.load_all(file, Loader=yaml.SafeLoader):
 
         #create output directory

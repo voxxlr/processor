@@ -43,8 +43,9 @@ bool processFile(json_spirit::mObject& iConfig)
 	lFileTree.collapse(iConfig["file"].get_str(), lResolution);
 	lFileTree.remove();
 
+	std::ofstream lOstream("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
+	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
 
 	return true;
 };

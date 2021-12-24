@@ -50,9 +50,9 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(json_spirit::mValue(lRoot), lOstream);
 	lOstream.close();
 
-	// return json object
+	std::ofstream lOstream("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
+	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
 
 	return true;
 };
@@ -60,49 +60,9 @@ bool processFile(json_spirit::mObject& iObject)
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
     
-#ifdef _WIN32
-
-#define TEST 1   
-
-#endif
-
 
 int main(int argc, char *argv[])
 {
-
-#if defined TEST
-
-	TmsTiler lTiler;
-
-	boost::filesystem::create_directories(boost::filesystem::path("D:/home/voxxlr/data/map/output"));
-	chdir("D:/home/voxxlr/data/map/output");
-	//lTiler.process("D:/tiff/MMC_Bolar_Ortho_clip_v1.tif");
-	//lTiler.process("D:/tiff/1546630597157.tif");
-
-	//lTiler.process("D:/tiff/DroneMapper_AdobeButtes3D-Flight1_2/Ortho-DroneMapper.tif");
-
-	//lTiler.process("D:/tiff/Ortho-DrnMppr.tif");
-	//lTiler.process("D:/tiff/depth.tif");
-	//lTiler.process("D:/tiff/depth.tif");
-
-	//lTiler.process("D:/tiff/doc-0-upload.tif");
-	/*
-	FILE* lFile = fopen("D:/home/voxxlr/data/map/1585783781601_NAD83_UTM_11N_for_Voxxlr.tif", "rb");
-	if (lFile)
-	{
-		char lBuffer[1024];
-		fread(lBuffer, 1024, 1, lFile);
-	}
-	*/
-
-	lTiler.process("D:/home/voxxlr/data/map/color.tif");
-	//lTiler.process("D:/STRABAG/181102/DSM/Teil_1_dsm.tif");
-	
-	//lTiler.process("D:/home/voxxlr/data/map/color.tif");
-	chdir("..");
-	
-#endif
-
 	task::initialize("tiler", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 	
     return EXIT_SUCCESS; 

@@ -25,8 +25,9 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(json_spirit::mValue(lCuber.mRoot), lOstream);
 	lOstream.close();
 
+	std::ofstream lOstream("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
+	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
 
 	return true;
 };

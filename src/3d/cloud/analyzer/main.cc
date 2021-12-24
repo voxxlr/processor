@@ -39,7 +39,8 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::mObject lResult;
 	lResult["resolution"] = lAnalyzer.mResolution;
 	lResult["variance"] = lAnalyzer.mVariance;
-	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
+	std::ofstream lOstream("process.json");
+	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
 
 	return true;
 };
