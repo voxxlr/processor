@@ -50,9 +50,9 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(json_spirit::mValue(lRoot), lOstream);
 	lOstream.close();
 
-	std::ofstream lOstream("process.json");
+	std::ofstream lProcess("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
+	json_spirit::write_stream(json_spirit::mValue(lResult), lProcess);
 
 	return true;
 };
