@@ -1,6 +1,6 @@
 # Overview
 The Voxxlr processor converts input files into a format required by the voxxlr doc server. The pipeline is deployed
-using and thus requied the docker engine to be installed. Once that is done follow the instructions below to build and 
+using and thus requied the docker engine to be installed. Follow the instructions below to build and 
 execute the processor. 
 
 ## building the docker image
@@ -11,7 +11,7 @@ Run the following shell script to build the docker image.
 ./docker-build.sh
 ```
 
-Once done a new docker image called vxProcessor should be listed when running 
+Once done a new docker image called vx-processor should be listed when running 
 
 ```sh
 docker images
@@ -26,8 +26,6 @@ Run the following shell script
 ```
 
 to process datasets located in the DATA_DIR directory. The DATA_DIR must contain a file call process.yaml that
-contains instructions for the processor including which files to process. 
-
-
-
+contains instructions for the processor including which files to process. An example of the process.yaml file can be found in 
+the root of this directory. 
 

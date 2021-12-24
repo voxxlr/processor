@@ -1,1 +1,1 @@
-docker run --name vxProcessor -v $1:/root/data -td vxProcessor
+docker run --name vx-processor -v $1:/root/data -td vxProcessor

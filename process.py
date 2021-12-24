@@ -1,5 +1,4 @@
 import json
-import pycurl
 import os
 import subprocess
 import sys
@@ -8,228 +7,179 @@ import psutil
 import shutil
 import glob
 import time
-import resource
+import yaml
+
 from io import BytesIO
-from google.cloud import datastore
-from PIL import Image
-import googleapiclient.discovery
+from pathlib import Path
 
-#change file limits
-resource.setrlimit(resource.RLIMIT_NOFILE, (131072, 131072))
+#resource.setrlimit(resource.RLIMIT_NOFILE, (131072, 131072))
 
+#setup directory and logfile
 startTime = time.time()
 
-# get machine metadata
-data = BytesIO()
-crl = pycurl.Curl() 
-crl.setopt(crl.URL, 'http://metadata/computeMetadata/v1/instance/attributes/config')
-crl.setopt(pycurl.HTTPHEADER, ['Metadata-Flavor: Google'])
-crl.setopt(crl.WRITEFUNCTION,data.write)
-crl.perform() 
-config = json.loads(data.getvalue().decode('UTF-8'));
-id = str(config["id"])
-
-root = os.path.dirname(os.path.abspath(__file__))
-
-# setup processing directory
-if not os.path.exists("process"):
-    os.makedirs("process")
-    subprocess.run(['/usr/bin/gsutil','-q','-m','cp','-r','gs://voxxlr-upload/'+id+'/*','./process'])
-os.chdir("process")
-
-#logF = sys.stdout
-logF = open("process.log",'w')
-logF.write("################\n")
-logF.write(json.dumps(config,sort_keys=True,indent=4)+"\n")
-logF.write("gs://voxxlr-upload/"+id+"\n")
-
+processor = os.path.dirname(os.path.abspath(__file__))
 def runVoxxlr(name,args):
-    name = f"{root}/bin/{name}"
-    logF.write(name+" \""+json.dumps(args).replace('"','\\"')+"\"\n")
-    #logF.write(json.dumps(args,sort_keys=True,indent=4)+"\n")
-    #process = subprocess.Popen([name,json.dumps(args)], stdout=logF, stderr=logF, shell=True)
-    process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=subprocess.PIPE, stderr=logF, shell=True,cwd=".")
-    response, error = process.communicate()
-    process.wait()
-    return json.loads(response.decode('utf-8'))
+   if os.name == "posix":
+        name = f"{processor}/bin/{name}"
+        sys.stdout.write(name+" \""+json.dumps(args).replace('"','\\"')+"\"\n")
+        process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=subprocess.PIPE, stderr=sys.stdout, shell=True,cwd=".")
+   else:
+        name = f"{processor}/bin/{name}.exe"
+        sys.stdout.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
+        process = subprocess.Popen([name,json.dumps(args)], stdout=subprocess.PIPE, stderr=sys.stdout, shell=True)
+
+   response, error = process.communicate()
+   process.wait()
+   return json.loads(response.decode('utf-8'))
 
 
-if not os.path.exists("root"):
-    os.makedirs("root")
+#load config file
+os.chdir(sys.argv[1])
 
-source = config["meta"]["source"];
+with open("process.yaml", "r") as file:
+    for config in yaml.load_all(file, Loader=yaml.SafeLoader):
 
-if config["type"] == 1: #"cloud"
+        #create output directory
+        directory = Path(config["file"]).stem
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        os.chdir(directory)
 
-    response = runVoxxlr("cloud/importer", 
-        {
-        "file": [source["files"][0]["name"]],
-        #"radius": 10,
-        "coords": config["coords"] if "coords" in config else "right-z",
-        "scalar": config["scalar"] if "scalar" in config else 1,
-        #"separate": True
-        })
+        datatype = Path(config["file"]).suffix
 
-    dataset = response["files"][0]
+        if datatype in [".e57", ".pts", ".laz"]: #"cloud"
 
-    #apply average filter
-    if not "resolution" in config:
-        resolution = runVoxxlr("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
-    else:
-        resolution = config["resolution"]
- 
-    runVoxxlr("cloud/filter",
-            { 
-            "resolution": resolution,
-            "file": f'./{dataset}'
-            })
-
-    runVoxxlr("cloud/packetizer", {  "file": f'./{dataset}' })
-
-    '''
-    runVoxxlr("cloud/importer", { 
-                "file": source["files"][0]["name"],
+            response = runVoxxlr("cloud/importer", 
+                {
+                "file": [f'../{config["file"]}'],
+                "filter": config["filter"] if "filter" in config else None,
+                "radius": config["radius"] if "radius" in config else None,
                 "coords": config["coords"] if "coords" in config else "right-z",
-                "scalar": config["scalar"] if "scalar" in config else 1,
-                "resolution": config["resolution"] if "resolution" in config else None
+                "transform": config["transform"] if "transform" in config else None,
+                #"separate": True
                 })
     
-    if not "resolution" in config:
-        
-        runVoxxlr("cloud/analyzer", { })
+            dataset = response["files"][0]
 
-    runVoxxlr("cloud/filter", {  "density": config["density"] if "density" in config else None })
- 
-    runVoxxlr("cloud/packetizer", { })
+            #apply average filter
+            if not "resolution" in config:
+                resolution = runVoxxlr("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
+            else:
+                resolution = config["resolution"]
+    
+            runVoxxlr("cloud/filter",
+                    { 
+                    "resolution": resolution,
+                    "file": f'./{dataset}'
+                    })
+
+            runVoxxlr("cloud/packetizer", {  "file": f'./{dataset}' })
+    
+            os.remove(f'./{dataset}.ply')
+    
+            for file in glob.glob('./*.ply'):
+                os.remove(file)
+            for file in glob.glob('./*.log'):
+                os.remove(file)
+
+        elif datatype in [".tiff"]: #"map"
+
+            color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
+            elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
+            runVoxxlr("map/tiler", { 
+                        "cpus": psutil.cpu_count(),
+                        "memory": psutil.virtual_memory().free,
+                        "color": color,
+                        "elevation": elevation,
+                        })
+
+        elif datatype in [".jpg", ".jpeg"]: #"panorama"
+    
+            runVoxxlr("panorama/cuber", { 
+                        "cpus": psutil.cpu_count(),
+                        "memory": psutil.virtual_memory().free,
+                        "file": source["files"][0]["name"],
+                        })
+
+        elif datatype in [".ifc", ".gltf"]:#"model"
+
+            for file in source["files"]:
+
+                if file["name"].endswith("gltf"):
+         
+                    runVoxxlr("model/gltf", { 
+                                "cpus": psutil.cpu_count(),
+                                "memory": psutil.virtual_memory().free,
+                                "file": file["name"],
+                                "scalar": config["scalar"] if "scalar" in config else 1
+                                })
+         
+                elif file["name"].endswith("ifc") or file["name"].endswith("IFC"):
+         
+                    runVoxxlr("model/ifc", { 
+                                "cpus": psutil.cpu_count(),
+                                "memory": psutil.virtual_memory().free,
+                                "file": file["name"],
+                                "scalar": config["scalar"] if "scalar" in config else 1
+                                })
+
+        os.chdir("..")
+
+
+
+
+                        
     '''
+    if len(response["files"]) > 1:
 
-elif config["type"] == 2:#"map"
+        #in case of some e57 files. filter each separately and then combine
+        summary = []
+        for dataset in response["files"]:
 
-    color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
-    elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
-    runVoxxlr("map/tiler", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "color": color,
-                "elevation": elevation,
-                })
-
-elif config["type"] == 3:#"panorama"
+            dir = Path(file).stem
+            if not os.path.exists(dataset):
+                os.makedirs(dataset)
+            os.chdir(dataset)
     
-    runVoxxlr("panorama/cuber", { 
-                "cpus": psutil.cpu_count(),
-                "memory": psutil.virtual_memory().free,
-                "file": source["files"][0]["name"],
+            analysis = runVoxxlr("cloud/analyzer", { "file": f'../{dataset}' })
+           
+            runVoxxlr("cloud/filter",
+                    { 
+                    "density": config["density"] if "density" in config else None, 
+                    "resolution": analysis["resolution"],
+                    #"resolution": 0.0012,
+                    "file": f'../{dataset}'
+                    })
+
+            summary.append(analysis)
+
+            os.chdir("..")    
+
+        #combine all scans into one
+        dataset = [ f'{file}.ply' for file in response["files"] ]
+
+        runVoxxlr("cloud/importer", 
+                {
+                "file": dataset,
+                "output": "combined.ply",
+                "coords": "right-y",
                 })
 
-elif config["type"] == 4:#"model"
+        #apply average filter
+        resolution = 0;
+        for analysis in summary:
+            resolution += analysis["resolution"]
+        resolution /= len(summary)
+ 
+        runVoxxlr("cloud/filter",
+                { 
+                "resolution": resolution,
+                "file": "./combined"
+                })
 
-    for file in source["files"]:
-            
-        if file["name"].endswith("gltf"):
-         
-            runVoxxlr("model/gltf", { 
-                        "cpus": psutil.cpu_count(),
-                        "memory": psutil.virtual_memory().free,
-                        "file": file["name"],
-                        "scalar": config["scalar"] if "scalar" in config else 1
-                        })
-         
-        elif file["name"].endswith("ifc") or file["name"].endswith("IFC"):
-         
-            runVoxxlr("model/ifc", { 
-                        "cpus": psutil.cpu_count(),
-                        "memory": psutil.virtual_memory().free,
-                        "file": file["name"],
-                        "scalar": config["scalar"] if "scalar" in config else 1
-                        })
+        if not os.path.exists("./combined"):
+            os.makedirs("./combined")
+        os.chdir("./combined")
 
-
-logF.write("\n################ BUCKET\n")
-client = datastore.Client()
-#get account from datastore
-account = client.get(client.key("account", config["account"]))
-
-#copy processed data to bucket
-logF.write("copying cloud to bucket\n")
-process = subprocess.Popen('gsutil -m -h "Cache-Control:public max-age=3600" -q cp -r -Z ./root/** gs://voxxlr-'+str(account["created"])+'/'+id+'/', stdout=logF, stderr=logF, shell=True) 
-stdout, stderr = process.communicate()
-process.wait()
-
-logF.write("\n################ DATASTORE\n")
-#create cloud table entry
-document = datastore.Entity(key=client.key("cloud", -config["id"]), exclude_from_indexes=(['root']))
-document["tags"] = config["tags"]
-document["type"] = config["type"]
-document["account"] = config["account"]
-document["bucket"] = account["created"]
-document["root"] = open('root.json', 'r').read()
-
-logF.write("create document datastore entry\n")
-client.put(document)
-        
-#create metadata table entry
-meta = datastore.Entity(key=client.key("meta", -config["id"]), exclude_from_indexes=(['content']))
-meta["content"] = json.dumps(config["meta"])
-logF.write("create meta datastore entry\n")
-client.put(meta)
-
-#update meter
-meter = client.get(client.key("meter", config["account"]))
-processing = json.loads(meter["processing"])
-processing.remove(int(id))
-meter["processing"] = json.dumps(processing)
-meter["compute.minutes"] = meter["compute.minutes"] + round((time.time() - startTime)/60)
-meter["timestamp"] = round(startTime*1000)
-logF.write("updating meter\n")
-client.put(meter)
-
-
-#notify user
-if "notify" in config:
-    message = """{"from":{"email":"info@voxxlr.com"},"subject":"Upload to Voxxlr","content":[{"type":"text/plain","value":"Hello, your recent upload to Voxxlr has completed processing, and the data set is now accessible in your account. Please let us know about any problems by replying to this email... The Voxxlr Devs"}],"personalizations":[{"to":[{"email":"EMAIL"}]}]}""".replace("EMAIL", config["account"])
-    crl = pycurl.Curl()
-    crl.setopt(crl.URL, 'https://api.sendgrid.com/v3/mail/send')
-    crl.setopt(pycurl.POST, 1)
-    crl.setopt(pycurl.HTTPHEADER, [
-        f"Authorization: Bearer {config['notify']}",
-        'Content-Type: application/json',
-        'Content-Length: ' + str(len(message))
-        ])
-    crl.setopt(pycurl.POSTFIELDS, message)
-    logF.write("sending email\n")
-    crl.perform()
-    crl.close()
-
-if "shutdown" in config:
-
-    # shutdown instance 
-    data = BytesIO()
-    crl = pycurl.Curl()
-    crl.setopt(crl.URL, 'http://metadata/computeMetadata/v1/project/project-id')
-    crl.setopt(pycurl.HTTPHEADER, ['Metadata-Flavor: Google'])
-    crl.setopt(crl.WRITEFUNCTION,data.write)
-    crl.perform()
-    project = data.getvalue().decode("UTF=8")
-
-    data = BytesIO()
-    crl = pycurl.Curl()
-    crl.setopt(crl.URL, 'http://metadata/computeMetadata/v1/instance/name')
-    crl.setopt(pycurl.HTTPHEADER, ['Metadata-Flavor: Google'])
-    crl.setopt(crl.WRITEFUNCTION,data.write)
-    crl.perform()
-    instance = data.getvalue().decode("UTF=8")
-
-    data = BytesIO()
-    crl = pycurl.Curl()
-    crl.setopt(crl.URL, 'http://metadata/computeMetadata/v1/instance/zone')
-    crl.setopt(pycurl.HTTPHEADER, ['Metadata-Flavor: Google'])
-    crl.setopt(crl.WRITEFUNCTION,data.write)
-    crl.perform()
-    path = data.getvalue().decode("UTF=8")
-    array = path.split("/")
-    zone = array[len(array)-1]
-
-    compute = googleapiclient.discovery.build('compute', 'v1')
-    request = compute.instances().delete(project=project, zone=zone, instance=instance)
-    response = request.execute()
+        runVoxxlr("cloud/packetizer", {  "file": "../combined" })
+    '''

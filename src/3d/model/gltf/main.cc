@@ -27,26 +27,7 @@ bool processFile(json_spirit::mObject& iObject)
 	Model* lModel = lParser.process(iObject["file"].get_str(), iObject["scalar"].get_real());
 
 	boost::filesystem::path lDirectory = boost::filesystem::path(iObject["file"].get_str()).parent_path();
-
 	json_spirit::mObject lRoot = lModel->write(lDirectory);
-
-	/*
-	{
-		std::ifstream lStream("meta.json");
-		json_spirit::mValue lValue;
-		json_spirit::read_stream(lStream, lValue);
-		lStream.close();
-
-		json_spirit::mObject& lMeta = lValue.get_obj();
-		lMeta["min"] = lRoot["min"].get_obj();
-		lMeta["max"] = lRoot["max"].get_obj();
-
-		// write meta
-		std::ofstream lOstream("meta.json");
-		json_spirit::write_stream(lValue, lOstream);
-		lOstream.close();
-	}
-	*/
 
 	// write root
 	std::ofstream lOstream("root.json");
