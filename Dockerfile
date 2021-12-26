@@ -29,12 +29,13 @@ RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=/root/vcpkg/scripts/buildsystems/vcpkg.cmake
 RUN make
 
 
-FROM ubuntu:20.04  
+FROM python:3.9
+#FROM ubuntu:20.04  
 
-#ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update
-RUN apt-get install -y python3
-#RUN python -m pip install psutil 
+#RUN apt-get update
+#RUN apt-get install -y python3
+#RUN apt-get install -y python3-pip
+RUN pip3 install pyyaml
 
 COPY --from=0 /root/process.py /root/
 COPY --from=0 /root/bin /root/bin

@@ -3,16 +3,17 @@ import os
 import subprocess
 import sys
 import math
-import psutil
 import shutil
 import glob
-import time
 import yaml
 
 from io import BytesIO
 from pathlib import Path
 
-#resource.setrlimit(resource.RLIMIT_NOFILE, (131072, 131072))
+if os.name == "posix":
+    import resource
+    softLimit, hardLimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hardLimit, hardLimit))
 
 processor = os.path.dirname(os.path.abspath(__file__))
 def runVoxxlr(name,args):
@@ -128,60 +129,3 @@ with open("process.yaml", "r") as file:
         os.chdir("..")
 
 
-
-
-                        
-    '''
-    if len(response["files"]) > 1:
-
-        #in case of some e57 files. filter each separately and then combine
-        summary = []
-        for dataset in response["files"]:
-
-            dir = Path(file).stem
-            if not os.path.exists(dataset):
-                os.makedirs(dataset)
-            os.chdir(dataset)
-    
-            analysis = runVoxxlr("cloud/analyzer", { "file": f'../{dataset}' })
-           
-            runVoxxlr("cloud/filter",
-                    { 
-                    "density": config["density"] if "density" in config else None, 
-                    "resolution": analysis["resolution"],
-                    #"resolution": 0.0012,
-                    "file": f'../{dataset}'
-                    })
-
-            summary.append(analysis)
-
-            os.chdir("..")    
-
-        #combine all scans into one
-        dataset = [ f'{file}.ply' for file in response["files"] ]
-
-        runVoxxlr("cloud/importer", 
-                {
-                "file": dataset,
-                "output": "combined.ply",
-                "coords": "right-y",
-                })
-
-        #apply average filter
-        resolution = 0;
-        for analysis in summary:
-            resolution += analysis["resolution"]
-        resolution /= len(summary)
- 
-        runVoxxlr("cloud/filter",
-                { 
-                "resolution": resolution,
-                "file": "./combined"
-                })
-
-        if not os.path.exists("./combined"):
-            os.makedirs("./combined")
-        os.chdir("./combined")
-
-        runVoxxlr("cloud/packetizer", {  "file": "../combined" })
-    '''
