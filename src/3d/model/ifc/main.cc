@@ -23,8 +23,6 @@
 
 bool processFile(json_spirit::mObject& iObject)
 {
-	BOOST_LOG_TRIVIAL(error) << "PATH:"  << boost::filesystem::current_path();
-
 	IfcLoader lLoader;
 	lLoader.process(iObject["file"].get_str());
 
@@ -34,6 +32,7 @@ bool processFile(json_spirit::mObject& iObject)
 
 	// write root
 	std::ofstream lOstream("root.json");
+	lRoot["type"] = "model";
 	json_spirit::write_stream(json_spirit::mValue(lRoot), lOstream);
 	lOstream.close();
 	

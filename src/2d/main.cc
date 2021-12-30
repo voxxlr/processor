@@ -47,6 +47,7 @@ bool processFile(json_spirit::mObject& iObject)
 
 	// write root
 	std::ofstream lOstream("root.json");
+	lRoot["type"] = "map";
 	json_spirit::write_stream(json_spirit::mValue(lRoot), lOstream);
 	lOstream.close();
 

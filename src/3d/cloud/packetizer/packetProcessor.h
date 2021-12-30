@@ -16,7 +16,7 @@ class PacketProcessor : public KdFileTree::InorderOperation
 
 		PacketProcessor();
 
-		json_spirit::mObject mRootInfo;
+		json_spirit::mObject mRoot;
 		
 	protected:
 
@@ -25,7 +25,6 @@ class PacketProcessor : public KdFileTree::InorderOperation
 		uint64_t mTotalWritten;
 
 		void initTraveral(PointCloudAttributes& iAttributes);
-		void completeTraveral(PointCloudAttributes& iAttributes);
 
 		// Normal Calculation
 		static void computeNormals(PointCloud& iPoints, uint32_t iNormalIndex);

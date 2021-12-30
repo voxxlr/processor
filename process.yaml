@@ -1,5 +1,6 @@
 ---
-file: 'FILENAME here'
+file: FILENAME
+type: cloud
 coords: right-z # coordinate system of data set in file
 # point cloud processing parameters
 #resolution: 0.00012  # average point spacing. comment in to override auto detection

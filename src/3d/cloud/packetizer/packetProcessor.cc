@@ -52,19 +52,6 @@ void PacketProcessor::initTraveral(PointCloudAttributes& iAttributes)
 	iAttributes.createAttribute(Attribute::NORMAL, lAttribute);
 }
 
-void PacketProcessor::completeTraveral(PointCloudAttributes& iAttributes)
-{
-	// write root
-	std::ofstream lStream("root.json");
-	json_spirit::write_stream(json_spirit::mValue(mRootInfo), lStream);
-	lStream.close();
-	/*
-	#if defined (__linux__)
-		chmod("./root.json", 0777);
-	#endif	
-	*/
-}
-
 void PacketProcessor::computeNormals(PointCloud& iPoints, uint32_t iNormalIndex)
 {
 	KdTree<KdSpatialDomain> lTree(iPoints, 100);
@@ -431,7 +418,7 @@ void PacketProcessor::processNode(KdFileTreeNode& iNode, PointCloud& iCloud)
 	if (iNode.mPath == "n")
 	{
 		// save the root info
-		mRootInfo = lInfo;
+		mRoot = lInfo;
 	}
 }
 

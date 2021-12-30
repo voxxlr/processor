@@ -22,6 +22,7 @@ bool processFile(json_spirit::mObject& iObject)
 
 	// write root
 	std::ofstream lOstream("root.json");
+	lCuber.mRoot["type"] = "panorama";
 	json_spirit::write_stream(json_spirit::mValue(lCuber.mRoot), lOstream);
 	lOstream.close();
 

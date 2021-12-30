@@ -29,9 +29,15 @@ bool processFile(json_spirit::mObject& iConfig)
 	lFileTree.process(lProcessor, KdFileTree::LEAVES | KdFileTree::INTERNAL);
 	lFileTree.remove();
 
-	std::ofstream lOstream("process.json");
+	// write root
+	std::ofstream lStream("root.json");
+	lProcessor.mRoot["type"] = "cloud";
+	json_spirit::write_stream(json_spirit::mValue(lProcessor.mRoot), lStream);
+	lStream.close();
+
+	std::ofstream lPrcocess("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
+	json_spirit::write_stream(json_spirit::mValue(lResult), lPrcocess);
 
 	return true;
 };

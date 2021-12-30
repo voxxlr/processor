@@ -50,7 +50,7 @@ with open("process.yaml", "r") as file:
 
         datatype = Path(config["file"]).suffix
 
-        if datatype in [".e57", ".pts", ".laz"]: #"cloud"
+        if config['type'] == 'cloud' and datatype in [".e57", ".pts", ".laz"]: 
 
             response = runVoxxlr("cloud/importer", 
                 {
@@ -85,46 +85,36 @@ with open("process.yaml", "r") as file:
             for file in glob.glob('./*.log'):
                 os.remove(file)
 
-        elif datatype in [".tiff"]: #"map"
+        elif config['type'] == 'map' and datatype in [".tiff"]:
 
             color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
             elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
             runVoxxlr("map/tiler", { 
-                        "cpus": psutil.cpu_count(),
-                        "memory": psutil.virtual_memory().free,
                         "color": color,
                         "elevation": elevation,
                         })
 
-        elif datatype in [".jpg", ".jpeg"]: #"panorama"
+        elif config['type'] == 'panorama' and datatype in [".jpg", ".jpeg"]: 
     
             runVoxxlr("panorama/cuber", { 
-                        "cpus": psutil.cpu_count(),
-                        "memory": psutil.virtual_memory().free,
                         "file": source["files"][0]["name"],
                         })
 
-        elif datatype in [".ifc", ".gltf"]:#"model"
+        elif config['type'] == 'model' and datatype in [".ifc", ".gltf"]:
 
-            for file in source["files"]:
-
-                if file["name"].endswith("gltf"):
+            if datatype == ".ifc":
          
-                    runVoxxlr("model/gltf", { 
-                                "cpus": psutil.cpu_count(),
-                                "memory": psutil.virtual_memory().free,
-                                "file": file["name"],
-                                "scalar": config["scalar"] if "scalar" in config else 1
-                                })
+                runVoxxlr("model/ifc", { 
+                            "file": f'../{config["file"]}',
+                            "scalar": config["scalar"] if "scalar" in config else 1
+                            })
          
-                elif file["name"].endswith("ifc") or file["name"].endswith("IFC"):
+            elif datatype == ".gltf":
          
-                    runVoxxlr("model/ifc", { 
-                                "cpus": psutil.cpu_count(),
-                                "memory": psutil.virtual_memory().free,
-                                "file": file["name"],
-                                "scalar": config["scalar"] if "scalar" in config else 1
-                                })
+                runVoxxlr("model/gltf", { 
+                            "file": f'../{config["file"]}',
+                            "scalar": config["scalar"] if "scalar" in config else 1
+                            })
 
         os.chdir("..")
 
