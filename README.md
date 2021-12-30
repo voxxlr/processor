@@ -4,9 +4,10 @@ using docker and thus requied that the docker engine is already installed.
 
 ## Building the docker image
 
-Run the following shell script to build the docker image.
+After cloning this repos run the following commands to build the docker image.
 
 ```sh
+cd processor
 ./docker-build.sh
 ```
 
