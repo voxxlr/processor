@@ -1,5 +1,5 @@
 # Overview
-The Voxxlr _processor_ converts input files into a format required by the voxxlr [_doc_ server](https://github.com/voxxlr/doc). It is deployed
+The Voxxlr _processor_ converts input files into a format required by the Voxxlr [_doc_ server](https://github.com/voxxlr/doc). It is deployed
 using docker and thus requires that the docker engine is already installed. 
 
 ## Building the docker image
