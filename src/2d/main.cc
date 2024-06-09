@@ -1,7 +1,15 @@
 #ifdef _WIN32
-#include <direct.h>
+	#include <direct.h>
+	#include <io.h>
+	char* const nulFileName = "NUL";
+	#define CROSS_DUP(fd) _dup(fd)
+	#define CROSS_DUP2(fd, newfd) _dup2(fd, newfd)
 #else
-#include <sys/stat.h>
+	#include <sys/stat.h>
+	#include <unistd.h>
+	char* const nulFileName = "/dev/null";
+	#define CROSS_DUP(fd) dup(fd)
+	#define CROSS_DUP2(fd, newfd) dup2(fd, newfd)
 #endif
 
 #include <iostream>
@@ -15,6 +23,8 @@
 #include "task.h"
 
 #include "tiler.h"
+
+
 
 bool processFile(json_spirit::mObject& iObject)
 {
@@ -51,9 +61,8 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(json_spirit::mValue(lRoot), lOstream);
 	lOstream.close();
 
-	std::ofstream lProcess("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), lProcess);
+	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 
 	return true;
 };

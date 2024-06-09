@@ -153,8 +153,6 @@ json_spirit::mObject PtxImporter::import(std::string iName)
 
 	BOOST_LOG_TRIVIAL(info) << "Main pass";
 	boost::filesystem::path lPath(iName);
-	json_spirit::mArray lArray;
-	lArray.push_back(lPath.stem().string());
 
 	// Main pass		
 	Point lPoint(lAttributes);
@@ -228,7 +226,7 @@ json_spirit::mObject PtxImporter::import(std::string iName)
 	fclose(lInputFile);
 
 	json_spirit::mObject lMeta = getMeta();
-	lMeta["files"] = lArray;
+	lMeta["file"] = lPath.stem().string();
 	return lMeta;
 }
 

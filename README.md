@@ -1,33 +1,30 @@
 # Overview
-The Voxxlr _processor_ converts input files into a format required by the Voxxlr [_doc_ server](https://github.com/voxxlr/doc). It is deployed
-using docker and thus requires that the docker engine is already installed. 
+The Voxxlr _processor_ converts input files into a format required by the Voxxlr _doc_ server. Currently supported are point clouds, drone maps in geotiff, CAD models in IFC and 360 images.
+
+## Runing locally in vscode
+
+Change the /data path in the "mounts" section of the .devcontainer.json to a path on your local machine. Create a process.yaml file including datasets in the /data directory and then open the project in vscode. After building the source, run the following command in a vscode terminal inside the dev container. 
+
+```
+python3 process.py /data
+```
+
+The appropriate output directory will be created in /data.
 
 ## Building the docker image
 
 After cloning this repos run the following commands to build the docker image.
 
 ```sh
-cd processor
-./docker-build.sh
-```
-
-A new docker image called __vx-processor__ should now be listed when running 
-
-```sh
-docker images
+docker compose build
 ```
 
 ## Running the processor
 
-Run the following shell script 
+Change the /data path in the "volumes" section of the docker-compose.yaml to a path on your local machine. Create a process.yaml file including datasets in the /data directory and then run
 
 ```sh
-./docker-run.sh DATA_DIR
+docker compose up
 ```
 
-to process datasets located in the DATA_DIR directory. It must also contain a file called __process.yaml__ that
-contains instructions including which datasets to process. An example of the process.yaml file can be found in 
-the root of this directory. The _processor_ will create a directory for each dataset that contains the input 
-to the [_doc_ server](https://github.com/voxxlr/doc). When starting the server, the DATA_DIR must be passed as a parameter. 
-
-
+The appropriate output directory will be created in /data.

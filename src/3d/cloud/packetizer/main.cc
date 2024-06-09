@@ -35,9 +35,8 @@ bool processFile(json_spirit::mObject& iConfig)
 	json_spirit::write_stream(json_spirit::mValue(lProcessor.mRoot), lStream);
 	lStream.close();
 
-	std::ofstream lPrcocess("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), lPrcocess);
+	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 
 	return true;
 };

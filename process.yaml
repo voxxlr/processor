@@ -1,8 +1,41 @@
----
-file: FILENAME
-type: cloud
-coords: right-z # coordinate system of data set in file
-# point cloud processing parameters
-#resolution: 0.00012  # average point spacing. comment in to override auto detection
-#radius: 2.9 # cutoff points beyond this radius from sensor (for e56 only)
-#density: 0.03 # filter points with lower density (%/100.0)
+#---
+#type: cloud
+#input: 
+#    file: 
+#        - BAUM.e57
+#    coords: right-z
+#process:
+#    resolution: 0.005
+#    filter:
+#        voxel: average
+#        density: 0.02
+#output:
+#    directory: baum
+#debug:
+#    - ply
+#    - log
+#---
+#type: model
+#input: 
+#    file: OTC-ConferenceCenter.ifc
+#    coords: right-z
+#output:
+#    directory: ConferenceCenter
+#debug:
+#    - log
+#---
+type: map
+input: 
+    color: color.tif
+    elevation: elevation.tif
+output:
+    directory: map
+debug:
+    - log
+#type: panorama
+#input: 
+#    file: image.jpg
+#output:
+#    directory: panorama
+#debug:
+#    - log

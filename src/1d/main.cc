@@ -26,9 +26,8 @@ bool processFile(json_spirit::mObject& iObject)
 	json_spirit::write_stream(json_spirit::mValue(lCuber.mRoot), lOstream);
 	lOstream.close();
 
-	std::ofstream lProcess("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), lProcess);
+	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 
 	return true;
 };
@@ -37,27 +36,9 @@ bool processFile(json_spirit::mObject& iObject)
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
     
-#ifdef _WIN32
-
-#define TEST 1   
-
-#endif
 
 int main(int argc, char *argv[])
 {
-
-#if defined TEST
-
-	boost::filesystem::create_directories(boost::filesystem::path("D:/home/voxxlr/data/360/output"));
-	_chdir("D:/home/voxxlr/data/360/output");
-
-	Cuber lCuber;
-	lCuber.process(std::string("../1615757969154_R0010011.JPG"));
-
-	_chdir("..");
-	
-#endif
-
 	task::initialize("cuber", argv[1], boost::function<bool(json_spirit::mObject&)>(processFile));
 
     return EXIT_SUCCESS;

@@ -107,8 +107,8 @@ TYPEREADER(uint32_t, uint32_t, "%du");
 TYPEREADER(uint16_t, uint16_t,"%hu");
 TYPEREADER(uint8_t, uint16_t,"%hu");
 TYPEREADER(int32_t, int32_t, "%d");
-TYPEREADER(int16_t, int16_t, "%h");
-TYPEREADER(int8_t, int16_t, "%h");
+TYPEREADER(int16_t, int16_t, "%hd");
+TYPEREADER(int8_t, int8_t, "%hhd");
 TYPEREADER(float,float,"%f");
 TYPEREADER(double,double,"%lf");
 
@@ -518,8 +518,6 @@ json_spirit::mObject PlyImporter::import (json_spirit::mArray iFiles, std::strin
 	fclose(lOutputFile); 
 
 	json_spirit::mObject lMeta = getMeta();
-	json_spirit::mArray lArray;
-	lArray.push_back(lPath.stem().string());
-	lMeta["files"] = lArray;
+	lMeta["file"] = lPath.stem().string();
 	return lMeta;
 }

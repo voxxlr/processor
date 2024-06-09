@@ -4,7 +4,7 @@ project(cloud)
 
 find_package(Boost REQUIRED COMPONENTS log)
 find_package(glm CONFIG REQUIRED)
-find_package(XercesC CONFIG REQUIRED)
+find_package(XercesC)
 
 include_directories(PRIVATE ../../common)
 include_directories(PRIVATE ${Boost_INCLUDE_DIR})
@@ -59,29 +59,8 @@ target_include_directories(importer PRIVATE ${LASZIP_INCLUDE_DIR})
 target_link_libraries(importer PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(importer PRIVATE ${XercesC_LIBRARIES})
 
-if (WIN32)
-    find_library(LASZIP_LIBRARY laszip3)
-elseif(UNIX)
-    find_library(LASZIP_LIBRARY laszip)
-endif()
+find_library(LASZIP_LIBRARY laszip)
 
 target_link_libraries(importer PRIVATE ${LASZIP_LIBRARY})
 
-
-
-
-if (WIN32)
-    set_target_properties(importer analyzer filter packetizer PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG  "${CMAKE_SOURCE_DIR}/bin/cloud" FOLDER "cloud")
-    set_target_properties(importer analyzer filter packetizer PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE  "${CMAKE_SOURCE_DIR}/bin/cloud" FOLDER "cloud")
-elseif(UNIX)
-    set_target_properties(importer analyzer filter packetizer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/cloud" FOLDER "cloud")
-endif()
-
-
-
-
-#message(STATUS "----------asdasasd--------")
-#message(STATUS "${COMMON_FILES}")
-#message(STATUS "${CMAKE_SOURCE_DIR}")
-#message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}")
-#message(STATUS "----------asdasasd--------")
+set_target_properties(importer analyzer filter packetizer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/cloud" FOLDER "cloud")

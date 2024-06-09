@@ -16,105 +16,117 @@ if os.name == "posix":
     resource.setrlimit(resource.RLIMIT_NOFILE, (hardLimit, hardLimit))
 
 processor = os.path.dirname(os.path.abspath(__file__))
-def runVoxxlr(name,args):
-   if os.name == "posix":
+def runTask(name,args,res=True):
+
+    if os.name == "posix":
         name = f"{processor}/bin/{name}"
         sys.stdout.write(name+" \""+json.dumps(args).replace('"','\\"')+"\"\n")
         process = subprocess.Popen(name+" '"+json.dumps(args)+"'", stdout=subprocess.PIPE, stderr=sys.stdout, shell=True,cwd=".")
-   else:
+    else:
         name = f"{processor}/bin/{name}.exe"
         sys.stdout.write(name+"\""+json.dumps(args).replace('"','\\"')+"\"\n")
         process = subprocess.Popen([name,json.dumps(args)], stdout=subprocess.PIPE, stderr=sys.stdout, shell=True)
 
-   process.communicate()
-   process.wait()
+    response, error = process.communicate()
+    process.wait()
+    if res:
+        return json.loads(response.decode('utf-8'))
+    else:
+        return {}
 
-   response = {}
-   with open("process.json", "r") as file:
-        response = json.load(file)
-   os.remove("process.json")
-   return response
+
+def processCloud(input, debug, process):
+
+    files = []
+    for file in input["file"]:
+        files.append(f'../{file}')
+
+    response = runTask("cloud/importer", 
+    {
+        "file": files,
+        "coords": input["coords"] if "coords" in input else "right-z",
+        "transform": input["transform"] if "transform" in input else None
+    })
+    
+    dataset = response["file"]
+
+    #apply average filter
+    if 'resolution' not in process or process['resolution'] == 'auto':
+        resolution = runTask("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
+    else:
+        resolution = process["resolution"]
+    
+    if "filter" in process:
+        runTask("cloud/filter",
+            { 
+                "filter": process["filter"],
+                "resolution": resolution,
+                "file": f'./{dataset}'
+            })
+
+    runTask("cloud/packetizer", {  "file": f'./{dataset}' })
+    
+    os.remove(f'./{dataset}.ply')
+
+    if not "ply" in debug:
+        for file in glob.glob('./*.ply'):
+            os.remove(file)
+
 
 #load config file
 os.chdir(sys.argv[1])
-
 with open("process.yaml", "r") as file:
 
     for config in yaml.load_all(file, Loader=yaml.SafeLoader):
 
-        #create output directory
-        directory = Path(config["file"]).stem
+        output = config["output"]
+
+        directory = str(output["directory"])
         if not os.path.exists(directory):
             os.makedirs(directory)
         os.chdir(directory)
 
-        datatype = Path(config["file"]).suffix
+        input = config["input"]
 
-        if config['type'] == 'cloud' and datatype in [".e57", ".pts", ".laz"]: 
+        debug = config["debug"] if "debug" in config else []
 
-            response = runVoxxlr("cloud/importer", 
-                {
-                "file": [f'../{config["file"]}'],
-                "filter": config["filter"] if "filter" in config else None,
-                "radius": config["radius"] if "radius" in config else None,
-                "coords": config["coords"] if "coords" in config else "right-z",
-                "transform": config["transform"] if "transform" in config else None,
-                #"separate": True
-                })
-    
-            dataset = response["files"][0]
+        if config['type'] == 'cloud': 
 
-            #apply average filter
-            if not "resolution" in config:
-                resolution = runVoxxlr("cloud/analyzer", { "file": f'./{dataset}' })["resolution"]
-            else:
-                resolution = config["resolution"]
-    
-            runVoxxlr("cloud/filter",
-                    { 
-                    "resolution": resolution,
-                    "file": f'./{dataset}'
-                    })
+            processCloud(input, debug, config["process"])
 
-            runVoxxlr("cloud/packetizer", {  "file": f'./{dataset}' })
+        elif config['type'] == 'map':
+
+            runTask("map/tiler", { 
+                        "color": f'../{input["color"]}',
+                        "elevation": f'../{input["elevation"]}',
+                        }, False)
+
+        elif config['type'] == 'panorama': 
     
-            os.remove(f'./{dataset}.ply')
-    
-            for file in glob.glob('./*.ply'):
-                os.remove(file)
+            runTask("panorama/cuber", { 
+                        "file": f'../{input["file"]}',
+                        })
+
+        elif config['type'] == 'model':
+
+            if input["file"].endswith(".ifc"):
+         
+                runTask("model/ifc", { 
+                            "file": f'../{input["file"]}',
+                            "scalar": config["scalar"] if "scalar" in config else 1
+                            })
+         
+            elif input["file"].endswith(".gltf"):
+         
+                runTask("model/gltf", { 
+                            "file": f'../{input["file"]}',
+                            "scalar": config["scalar"] if "scalar" in config else 1
+                            })
+
+
+        if not "log" in debug:
             for file in glob.glob('./*.log'):
                 os.remove(file)
-
-        elif config['type'] == 'map' and datatype in [".tiff"]:
-
-            color = source["files"][0]["name"] if len(source["files"]) > 0  else ""
-            elevation = source["files"][1]["name"] if len(source["files"]) > 1  else ""
-            runVoxxlr("map/tiler", { 
-                        "color": color,
-                        "elevation": elevation,
-                        })
-
-        elif config['type'] == 'panorama' and datatype in [".jpg", ".jpeg"]: 
-    
-            runVoxxlr("panorama/cuber", { 
-                        "file": source["files"][0]["name"],
-                        })
-
-        elif config['type'] == 'model' and datatype in [".ifc", ".gltf"]:
-
-            if datatype == ".ifc":
-         
-                runVoxxlr("model/ifc", { 
-                            "file": f'../{config["file"]}',
-                            "scalar": config["scalar"] if "scalar" in config else 1
-                            })
-         
-            elif datatype == ".gltf":
-         
-                runVoxxlr("model/gltf", { 
-                            "file": f'../{config["file"]}',
-                            "scalar": config["scalar"] if "scalar" in config else 1
-                            })
 
         os.chdir("..")
 

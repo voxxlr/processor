@@ -31,21 +31,25 @@ bool processFile(json_spirit::mObject& iConfig)
 	KdFileTree lFileTree;
 	lFileTree.construct(iConfig["file"].get_str(), std::min((uint64_t)(availableMemory() / 250) / lThreads, lPointCount / lThreads), 1.1*KdFileTree::SIGMA*lResolution);
 	
-	VoxelFilter lVoxelFilter(lResolution);
-	lFileTree.process(lVoxelFilter, KdFileTree::LEAVES);
+	json_spirit::mObject lFilter = iConfig["filter"].get_obj();
 
-	if (iConfig.find("density") != iConfig.end() && !iConfig["density"].is_null())
+	if (lFilter.find("voxel") != iConfig.end() && !lFilter["voxel"].is_null())
 	{
-		RadiusFilter lRadiusFilter(lResolution, iConfig["density"].get_real());
+		VoxelFilter lVoxelFilter(lResolution);
+		lFileTree.process(lVoxelFilter, KdFileTree::LEAVES);
+	}
+
+	if (lFilter.find("density") != iConfig.end() && !lFilter["density"].is_null())
+	{
+		RadiusFilter lRadiusFilter(lResolution, lFilter["density"].get_real());
 		lFileTree.process(lRadiusFilter, KdFileTree::LEAVES);
 	}
 
 	lFileTree.collapse(iConfig["file"].get_str(), lResolution);
 	lFileTree.remove();
 
-	std::ofstream lOstream("process.json");
 	json_spirit::mObject lResult;
-	json_spirit::write_stream(json_spirit::mValue(lResult), lOstream);
+	json_spirit::write_stream(json_spirit::mValue(lResult), std::cout);
 
 	return true;
 };

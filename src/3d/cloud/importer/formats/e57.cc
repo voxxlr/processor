@@ -308,53 +308,28 @@ json_spirit::mObject E57Importer::import (std::string iName)
 		}
 	}
 
-	json_spirit::mArray lArray;
-
 	// write ply
 	Point lPoint(lAttributes);
 
-	if (mConfig["separate"].get_bool())
-	{
-		for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
-		{
-			std::string lName((*lIter)->mHeader.name);
-			if (!filtered(lName))
-			{
-				FILE* lOutputFile = PointCloud::writeHeader((*lIter)->mHeader.name, lAttributes,0);
-				BOOST_LOG_TRIVIAL(info) << "File - " << (*lIter)->mHeader.name << "  :   " << (*lIter)->nPointsSize;
+	boost::filesystem::path lPath(iName);
+	FILE* lOutputFile = PointCloud::writeHeader(lPath.stem().string(), lAttributes, 0, 0, 0);
+	uint64_t lPointCount = 0;
 
-				uint64_t lPointCount = (*lIter)->read(lPoint, eReader, lOutputFile, *this, mRadius2);
-				PointCloud::updateSize(lOutputFile, lPointCount);
-				PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
-				fclose(lOutputFile);
-				lArray.push_back((*lIter)->mHeader.name);
-			}
+	for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
+	{
+		std::string lName((*lIter)->mHeader.name);
+		if (!filtered(lName))
+		{
+			BOOST_LOG_TRIVIAL(info) << "File - " << (*lIter)->mHeader.name << "  :   " << (*lIter)->nPointsSize;
+			lPointCount += (*lIter)->read(lPoint, eReader, lOutputFile, *this, mRadius2);
 		}
 	}
-	else
-	{
-		boost::filesystem::path lPath(iName);
 
-		FILE* lOutputFile = PointCloud::writeHeader(lPath.stem().string(), lAttributes, 0, 0, 0);
-		uint64_t lPointCount = 0;
-
-		lArray.push_back(lPath.stem().string());
-		for (std::vector<E57*>::iterator lIter = lList.begin(); lIter != lList.end(); lIter++)
-		{
-			std::string lName((*lIter)->mHeader.name);
-			if (!filtered(lName))
-			{
-				BOOST_LOG_TRIVIAL(info) << "File - " << (*lIter)->mHeader.name << "  :   " << (*lIter)->nPointsSize;
-				lPointCount += (*lIter)->read(lPoint, eReader, lOutputFile, *this, mRadius2);
-			}
-		}
-
-		PointCloud::updateSize(lOutputFile, lPointCount);
-		PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
-		fclose(lOutputFile);
-	}
+	PointCloud::updateSize(lOutputFile, lPointCount);
+	PointCloud::updateSpatialBounds(lOutputFile, mMinD, mMaxD);
+	fclose(lOutputFile);
 
     json_spirit::mObject lMeta = getMeta();
-	lMeta["files"] = lArray;
+	lMeta["file"] = lPath.stem().string();
 	return lMeta;
 }

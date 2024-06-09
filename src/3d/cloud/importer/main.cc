@@ -65,8 +65,7 @@ bool processFile(json_spirit::mObject& iConfig)
 		lProperties = lImporter.import(lFiles, iConfig["output"].get_str());
 	}
 
-	std::ofstream lOstream("process.json");
-	json_spirit::write_stream(json_spirit::mValue(lProperties), lOstream);
+	json_spirit::write_stream(json_spirit::mValue(lProperties), std::cout);
 	return true;
 };
 

@@ -1,0 +1,10 @@
+version: '3.4'
+services:
+
+  doc:
+    image: gcr.io/voxxlr/vx-processor
+    container_name: vx-processor
+    build:
+      dockerfile: Dockerfile
+    volumes:
+      - D:/datasets:/root/processor/data

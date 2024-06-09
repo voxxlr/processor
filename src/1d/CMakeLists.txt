@@ -20,10 +20,5 @@ target_include_directories(cuber PRIVATE ${PNG_INCLUDE_DIR})
 target_include_directories(cuber PRIVATE ${JPEG_INCLUDE_DIR})
 target_include_directories(cuber PRIVATE ${Boost_INCLUDE_DIR})
 
-if (WIN32)
-    set_target_properties(cuber PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG  "${CMAKE_SOURCE_DIR}/bin/panorama" FOLDER "panorama")
-    set_target_properties(cuber PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE  "${CMAKE_SOURCE_DIR}/bin/panorama" FOLDER "panorama")
-elseif(UNIX)
-    set_target_properties(cuber PROPERTIES RUNTIME_OUTPUT_DIRECTORY  "${CMAKE_SOURCE_DIR}/bin/panorama" FOLDER "panorama")
-endif()
+set_target_properties(cuber PROPERTIES RUNTIME_OUTPUT_DIRECTORY  "${CMAKE_SOURCE_DIR}/bin/panorama" FOLDER "panorama")
 

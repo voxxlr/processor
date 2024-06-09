@@ -138,8 +138,6 @@ json_spirit::mObject LasImporter::import (std::string iName)
 	}
 	*/
 	boost::filesystem::path lPath(iName);
-	json_spirit::mArray lArray;
-	lArray.push_back(lPath.stem().string());
 
 	// main pass
 	BOOST_LOG_TRIVIAL(info) << "Main pass ";
@@ -209,7 +207,7 @@ json_spirit::mObject LasImporter::import (std::string iName)
 	laszip_close_reader(lReader);
 
 	json_spirit::mObject lMeta = getMeta();
-	lMeta["files"] = lArray;
+	lMeta["file"] = lPath.stem().string();
 	return lMeta;
 }
 
